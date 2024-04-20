@@ -157,6 +157,7 @@ class Bonds_UI(Bonds_portfolio):
                 
         # Write a total using a formula.
         workbook.close()
+        self.m_textCtrl3.AppendText(f'Excel file exported! \n')
         
         #connection.close()
         
@@ -317,6 +318,7 @@ class Bonds_UI(Bonds_portfolio):
             str_=f'{item[0]},{q},{item[2]}\n'
             file.write(str_)
         file.close()
+        self.m_textCtrl3.AppendText(f'CSV file exported! \n')
             
         
 
