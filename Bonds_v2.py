@@ -100,7 +100,7 @@ class Bonds_UI(Bonds_portfolio):
         cursor = self.connection.cursor()
         
         # Create a workbook and add a worksheet.
-        workbook = xlsxwriter.Workbook('my_portfolio2.xlsx')
+        workbook = xlsxwriter.Workbook('Export_files\my_portfolio2.xlsx')
         worksheet = workbook.add_worksheet()
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({'bold': True})
@@ -305,7 +305,7 @@ class Bonds_UI(Bonds_portfolio):
         self.m_textCtrl3.AppendText(f'Bond portfolio value: {bond_portfolio_value:,.2f}\n')          
     
     def portfolio_export2CVS(self, event):
-        file = open("portfolio_exportDB.txt", "w")
+        file = open("Export_files\portfolio_exportDB.txt", "w")
         cursor = self.connection.cursor()
         
         sql_str=f'select isin, qty, short_name from bond_portfolio where qty>0'
