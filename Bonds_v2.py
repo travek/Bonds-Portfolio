@@ -124,8 +124,10 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('O1', 'Coupon_yield', bold)
         worksheet.write('P1', 'Coupon_period', bold)
         worksheet.write('Q1', 'Issue_size', bold)
+        worksheet.write('R1', 'Coupon_type', bold)
+        worksheet.write('S1', 'Coupon_base', bold)
                 
-        sql_str=f'SELECT isin, qty, short_name FROM bond_portfolio WHERE 1=1 and qty>0 '
+        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 '
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -140,7 +142,7 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), item[0]), date_format)
             worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), item[0]))
             worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
-            worksheet.write(row, col + 7, bonds_functions_db.get_bond_rating(self.connection.cursor(), item[0]) )        
+            worksheet.write(row, col + 7, bonds_functions_db.get_bond_rating(self.connection.cursor(), item[0])[0] )     
             worksheet.write(row, col + 8, moex_data["yield"] )
 
             worksheet.write(row, col + 9, item[1]*moex_data["full_price"])
@@ -152,6 +154,8 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
             worksheet.write(row, col + 15, moex_data["coupon_period"])
             worksheet.write(row, col + 16, moex_data["issue_size"])
+            worksheet.write(row, col + 17, item[3])
+            worksheet.write(row, col + 18, item[4])
                             
             row += 1            
                 
