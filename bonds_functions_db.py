@@ -29,23 +29,31 @@ def get_bond_maturity(cursor, isin):
 def get_bond_rating(cursor, isin):
     #cursor = connection.cursor()
     
-    sql_str=f'select rating from bonds_static WHERE ISIN like "{isin}"'
+    sql_str=f'select rating, ifnull(percent_type,"fixed") as type_ from bonds_static WHERE ISIN like "{isin}"'
     cursor.execute(sql_str)
-    rating = cursor.fetchone()[0]
+    sql_res = cursor.fetchone()
     
-    return rating    
+    return sql_res
     
 
 def get_bond_type_by_rating(cursor, isin):
     r=get_bond_rating(cursor, isin)
-    num=ratings.get(r, -1)
+    rating=r[0]
+    type_=r[1]    
+    num=ratings.get(rating, -1)
     
     if num == 27:
         return 'Gov'
     elif num<=26 and num>=16:
-        return 'Corp'
+        if type_=='float':
+            return 'Corp-fl'
+        else:
+            return 'Corp'
     elif num<=15 and num>=0:
-        return 'VDO'
+        if type_=='float':
+            return 'VDO-fl'    
+        else:
+            return 'VDO'
     elif num==-1:
         return 'wrong rating!'
     
