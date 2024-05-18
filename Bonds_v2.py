@@ -318,7 +318,7 @@ class Bonds_UI(Bonds_portfolio):
         tbl = cursor.fetchall()
         
         for item in tbl:
-            q=str(item[1])
+            q=str(round(item[1]))
             str_=f'{item[0]},{q},{item[2]}\n'
             file.write(str_)
         file.close()

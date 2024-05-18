@@ -67,7 +67,8 @@ def get_bond_nearest_coupon_date(cursor, isin):
     sql_str=f'select min(date) from bonds_schedule where isin like "{isin}" and date>"{today_str}"'
     cursor.execute(sql_str)
     nearest_coupon = cursor.fetchone()[0]
-    d = datetime.datetime.strptime(nearest_coupon, '%Y%m%d')
+    if nearest_coupon is not None:
+        d = datetime.datetime.strptime(nearest_coupon, '%Y%m%d')
     
     return d
 
@@ -79,8 +80,10 @@ def get_bond_nearest_coupon(cursor, isin):
     
     sql_str=f'select pct_value     from bonds_schedule     where isin like "{isin}" and date = (select min(date) from bonds_schedule where isin like "{isin}" and date>"{today_str}") '
     cursor.execute(sql_str)
-    val = cursor.fetchone()[0]
-    return val
+    val = cursor.fetchone()
+    if val is None:
+        return 0
+    return val[0]
 
 
 
