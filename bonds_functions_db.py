@@ -34,6 +34,14 @@ def get_bond_rating(cursor, isin):
     sql_res = cursor.fetchone()
     
     return sql_res
+
+def update_fcy_rates():
+    req_str='https://iss.moex.com/iss/statistics/engines/currency/markets/fixing.json'
+    j=requests.get(req_str).json()
+    for b in zip(j['history']['data']):    
+        if b[0][1]=='USDFIXME':
+            cross_rates['USD']=float(b[0][2])
+            print(cross_rates)    
     
 
 def get_bond_type_by_rating(cursor, isin):
