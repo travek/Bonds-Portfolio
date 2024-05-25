@@ -178,7 +178,7 @@ class Bonds_UI(Bonds_portfolio):
         return 0
     
     
-    def graph_cashflows( self, calc_type=1 ):
+    def graph_cashflows_old( self, calc_type=1 ):
         #Посчитать поток в каждом месяце и вывести график гисторграммой
         
         d = datetime.datetime.today()
@@ -229,6 +229,74 @@ class Bonds_UI(Bonds_portfolio):
             
         
         return 0
+    
+    def graph_cashflows( self, calc_type=1 ):
+        #Посчитать поток в каждом месяце и вывести график гисторграммой
+        
+        d = datetime.datetime.today()
+        today_str=d.strftime("%Y%m%d")        
+        cursor = self.connection.cursor()
+        
+        sql_str=f'select max(date) from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0'
+        cursor.execute(sql_str)
+        max_pay_date = cursor.fetchone()[0]
+        d = datetime.datetime.strptime(max_pay_date, '%Y%m%d')
+        
+        start_date=datetime.datetime.today().replace(day=1).replace(hour=0, minute=0, second=0, microsecond=0)
+        fist_day_next_month=(start_date + datetime.timedelta(days=33)).replace(day=1)
+        end_date=(fist_day_next_month- datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                
+        bonds_functions_db.update_fcy_rates()
+                        
+        cf_all = SortedDict()
+
+        while end_date<=bonds_functions_db.calc_last_day_of_month(d):
+            start_date_str=start_date.strftime("%Y%m%d")
+            end_date_str=end_date.strftime("%Y%m%d")
+            
+            if calc_type==1:
+                #sql_str=f'select sum(pct_value*bp.qty + nominal_value*bp.qty) from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}"'                
+                sql_str=f'select sum(pct_value*bp.qty + nominal_value*bp.qty) as val, ifnull(bs.nominal_currency, "RUB") from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}" group by nominal_currency'
+                
+            if calc_type==2:
+                sql_str=f'select sum(pct_value*bp.qty) from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}"'
+            if calc_type==3:
+                sql_str=f'select sum(nominal_value*bp.qty) from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}"'
+                                
+            cursor.execute(sql_str)
+            results = cursor.fetchall()
+            
+            for row in results:
+                if row[0] is not None:
+                    cfy=row[1]
+                    if cfy=='RUB':
+                        if start_date not in cf_all:
+                            cf_all[start_date]= row[0]
+                        else:
+                            cf_all[start_date]+= row[0]
+                    else:
+                        if start_date not in cf_all:
+                            cf_all[start_date]= row[0]*bonds_functions_db.cross_rates['USD']
+                        else:
+                            cf_all[start_date]+= row[0]*bonds_functions_db.cross_rates['USD']
+            
+            start_date=fist_day_next_month
+            fist_day_next_month=(start_date + datetime.timedelta(days=33)).replace(day=1)
+            end_date=(fist_day_next_month- datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)            
+            
+        p=pd.DataFrame.from_dict(cf_all.items())
+        p.columns=['date', 'amount']
+        p['date'] = p['date'].dt.strftime('%Y-%m')
+        r=p.groupby('date')['amount'].sum().reset_index()
+        
+        fig1 = go.Figure()    
+        fig1.add_trace(go.Bar(x=r['date'], y=r['amount'], text=round(r['amount']), texttemplate="%{y:,.0f}"))
+        fig1.layout = dict(xaxis=dict(type="category"))  
+        fig1.show()         
+            
+        
+        return 0
+    
     
     def graph_cashflows2( self ):
         #Посчитать поток в каждом месяце и вывести график гисторграммой
