@@ -160,7 +160,7 @@ class Bonds_UI(Bonds_portfolio):
             row += 1            
                 
         # Write a total using a formula.
-        workbook.close()
+        workbook.close()                
         self.m_textCtrl3.AppendText(f'Excel file exported! \n')
         
         #connection.close()
@@ -391,6 +391,47 @@ class Bonds_UI(Bonds_portfolio):
             file.write(str_)
         file.close()
         self.m_textCtrl3.AppendText(f'CSV file exported! \n')
+        
+    def f_export_cash_flow_Excel( self, event ):
+        event.Skip()
+
+        #connection = sqlite3.connect('portfolio_database.db')
+        cursor = self.connection.cursor()
+        
+        # Create a workbook and add a worksheet.
+        workbook = xlsxwriter.Workbook('Export_files\cash_flows.xlsx')
+        worksheet = workbook.add_worksheet()
+        # Add a bold format to use to highlight cells.
+        bold = workbook.add_format({'bold': True})
+        date_format = workbook.add_format({'num_format': 'dd/mm/yy'})
+        
+        # Write some data headers.
+        worksheet.write('A1', 'Ticker', bold)
+        worksheet.write('B1', 'Isin', bold)
+        worksheet.write('C1', 'Date', bold)
+        worksheet.write('D1', 'Value', bold)
+        worksheet.write('E1', 'currency', bold)
+        worksheet.write('F1', 'type', bold)
+                
+        sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{20240525}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{20240525}" and nominal_value>0 ) order by date '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()
+        
+        row = 1
+        col = 0          
+        for item in tbl:
+            worksheet.write(row, col,     item[0])
+            worksheet.write(row, col + 1, item[1])
+            worksheet.write(row, col + 2, item[2])
+            worksheet.write(row, col + 3, item[3])
+            worksheet.write(row, col + 4, item[4])
+            worksheet.write(row, col + 5, item[5])
+                            
+            row += 1            
+                
+        # Write a total using a formula.
+        workbook.close()                
+        self.m_textCtrl3.AppendText(f'Excel file exported! \n')        
             
         
 
