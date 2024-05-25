@@ -397,6 +397,8 @@ class Bonds_UI(Bonds_portfolio):
 
         #connection = sqlite3.connect('portfolio_database.db')
         cursor = self.connection.cursor()
+        d = datetime.datetime.today()
+        today_str=d.strftime("%Y%m%d")        
         
         # Create a workbook and add a worksheet.
         workbook = xlsxwriter.Workbook('Export_files\cash_flows.xlsx')
@@ -413,7 +415,7 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('E1', 'currency', bold)
         worksheet.write('F1', 'type', bold)
                 
-        sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{20240525}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{20240525}" and nominal_value>0 ) order by date '
+        sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" and nominal_value>0 ) order by date '
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
