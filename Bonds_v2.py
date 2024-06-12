@@ -23,7 +23,7 @@ class Add_to_portfolio(Portfolio_add_bond):
         print(f'{isin_}, {qty_}, {tiker_}, {portfolio_id}')
         cursor = self.connection.cursor()
         
-        if len(isin_)>5 and qty>0 and len(tiker_)>0 and len(portfolio_id)>1:
+        if len(isin_)>5 and qty_>0 and len(tiker_)>0 and len(portfolio_id)>1:
             sql_str=f'insert into bond_portfolio(isin, qty, short_name, portfolio_id) values("{isin_}", {qty_}, "{tiker_}", "{portfolio_id}")'
             cursor.execute(sql_str)
             self.connection.commit()        
@@ -147,7 +147,7 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('N1', 'Last_Price', bold)
         worksheet.write('O1', 'Coupon_yield', bold)
         worksheet.write('P1', 'Coupon_period', bold)
-        worksheet.write('Q1', 'Issue_size', bold)
+        worksheet.write('Q1', 'Portfolio ID', bold)
         worksheet.write('R1', 'Coupon_type', bold)
         worksheet.write('S1', 'Coupon_base', bold)
                 
@@ -159,6 +159,7 @@ class Bonds_UI(Bonds_portfolio):
         col = 0          
         for item in tbl:
             moex_data=bonds_functions_db.get_bond_info_moex(item[0])
+            bond_rating=bonds_functions_db.get_bond_rating(self.connection.cursor(), item[0])
             worksheet.write(row, col,     item[2])
             worksheet.write(row, col + 1, item[0])
             worksheet.write(row, col + 2, item[1])
@@ -166,7 +167,7 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), item[0]), date_format)
             worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), item[0]))
             worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
-            worksheet.write(row, col + 7, bonds_functions_db.get_bond_rating(self.connection.cursor(), item[0])[0] )     
+            worksheet.write(row, col + 7, bond_rating['rating'])     
             worksheet.write(row, col + 8, moex_data["yield"] )
 
             worksheet.write(row, col + 9, item[1]*moex_data["full_price"])
@@ -405,13 +406,13 @@ class Bonds_UI(Bonds_portfolio):
         file = open("Export_files\portfolio_exportDB.txt", "w")
         cursor = self.connection.cursor()
         
-        sql_str=f'select isin, qty, short_name from bond_portfolio where qty>0'
+        sql_str=f'select isin, qty, short_name, portfolio_id from bond_portfolio where qty>0'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
         for item in tbl:
             q=str(round(item[1]))
-            str_=f'{item[0]},{q},{item[2]}\n'
+            str_=f'{item[0]},{q},{item[2]}, {item[3]}\n'
             file.write(str_)
         file.close()
         self.m_textCtrl3.AppendText(f'CSV file exported! \n')

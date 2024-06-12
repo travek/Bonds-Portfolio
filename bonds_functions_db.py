@@ -31,9 +31,15 @@ def get_bond_rating(cursor, isin):
     
     sql_str=f'select rating, ifnull(percent_type,"fixed") as type_ from bonds_static WHERE ISIN like "{isin}"'
     cursor.execute(sql_str)
-    sql_res = cursor.fetchone()
+    sql_res = cursor.fetchone()    
+    results={'rating':sql_res[0], 'type': sql_res[1]}
     
-    return sql_res
+    sql_str=f'select distinct ifnull(nominal_currency,"RUB") as currency from bonds_schedule where isin like "{isin}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    results['currency']=sql_res[0]
+       
+    return results
 
 def update_fcy_rates():
     req_str='https://iss.moex.com/iss/statistics/engines/currency/markets/fixing.json'
@@ -46,8 +52,10 @@ def update_fcy_rates():
 
 def get_bond_type_by_rating(cursor, isin):
     r=get_bond_rating(cursor, isin)
-    rating=r[0]
-    type_=r[1]    
+    rating=r['rating']
+    type_=r['type']    
+    currency=r['currency']
+    
     num=ratings.get(rating, -1)
     
     if num == 27:
@@ -55,6 +63,8 @@ def get_bond_type_by_rating(cursor, isin):
     elif num<=26 and num>=16:
         if type_=='float':
             return 'Corp-fl'
+        elif currency!="RUB":
+            return f'Corp-{currency}'
         else:
             return 'Corp'
     elif num<=15 and num>=0:
