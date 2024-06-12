@@ -1,5 +1,6 @@
 import wx
 from base_ui_bonds_portfolio import Bonds_portfolio
+from base_ui_bonds_portfolio import Portfolio_add_bond
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -9,6 +10,29 @@ import pandas as pd
 import plotly.subplots as ps
 import plotly.graph_objs as go
 
+class Add_to_portfolio(Portfolio_add_bond):
+    def __init__(self, db_connection):
+        super(Add_to_portfolio, self).__init__(parent=None)
+        self.connection=db_connection
+        
+    def f_add_to_portfolio( self, event ):
+        isin_=self.m_ISIN_input.GetValue().strip()
+        qty_=float(self.m_quantity_input.GetValue().strip())
+        tiker_=self.m_tiker_input.GetValue().strip()
+        portfolio_id=self.m_portfolio_id.GetValue().strip()
+        print(f'{isin_}, {qty_}, {tiker_}, {portfolio_id}')
+        cursor = self.connection.cursor()
+        
+        if len(isin_)>5 and qty>0 and len(tiker_)>0 and len(portfolio_id)>1:
+            sql_str=f'insert into bond_portfolio(isin, qty, short_name, portfolio_id) values("{isin_}", {qty_}, "{tiker_}", "{portfolio_id}")'
+            cursor.execute(sql_str)
+            self.connection.commit()        
+        
+        self.Close()
+        
+    def f_Cancel_button_pushed( self, event ):
+        self.Close()
+    
 
 class Bonds_UI(Bonds_portfolio):
     def __init__(self, db_connection):
@@ -127,7 +151,7 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('R1', 'Coupon_type', bold)
         worksheet.write('S1', 'Coupon_base', bold)
                 
-        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 '
+        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 '
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -153,7 +177,7 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col + 13, moex_data["last_price"])
             worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
             worksheet.write(row, col + 15, moex_data["coupon_period"])
-            worksheet.write(row, col + 16, moex_data["issue_size"])
+            worksheet.write(row, col + 16, item[5])
             worksheet.write(row, col + 17, item[3])
             worksheet.write(row, col + 18, item[4])
                             
@@ -433,8 +457,12 @@ class Bonds_UI(Bonds_portfolio):
                 
         # Write a total using a formula.
         workbook.close()                
-        self.m_textCtrl3.AppendText(f'Excel file exported! \n')        
-            
+        self.m_textCtrl3.AppendText(f'Excel file exported! \n')
+    
+    def f_add_to_portfolio_selected( self, event ):
+        frame_add=Add_to_portfolio(db_connection=self.connection)
+        frame_add.Show()
+
         
 
 if __name__ == "__main__":
