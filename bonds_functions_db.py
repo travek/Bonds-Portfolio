@@ -227,12 +227,15 @@ def calc_bond_portfolio_value(cursor):
     d = datetime.datetime.today()
     today_str=d.strftime("%Y%m%d")
     
-    sql_str=f'SELECT isin, qty FROM bond_portfolio WHERE qty>0 '
+    sql_str=f'SELECT isin, qty, portfolio_id FROM bond_portfolio WHERE qty>0 '
     cursor.execute(sql_str)
     tbl = cursor.fetchall()
+    
+    portfolios={}
         
     for item in tbl:
         data=get_bond_info_moex(item[0])
+        portfolios[item[2]]=portfolios.get(item[2],0)+data["full_price"]*item[1]
         total_val=total_val+data["full_price"]*item[1]
         
     sql_str=f'select count(price) from market_data where id="my_portfolio" and date="{today_str}"'
@@ -246,8 +249,8 @@ def calc_bond_portfolio_value(cursor):
         sql_str=f'update market_data set price={total_val} where id="my_portfolio" and date="{today_str}"'
         cursor.execute(sql_str)
         
-        
-    return total_val
+    portfolios["total"]=total_val
+    return portfolios
 
 def get_current_bond_nominal(cursor, isin, on_date=datetime.datetime.today()):
     initial=1000
