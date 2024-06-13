@@ -399,8 +399,10 @@ class Bonds_UI(Bonds_portfolio):
         self.m_textCtrl3.AppendText(f'Start portfolio fair value calculation...')
         bond_portfolio_value=bonds_functions_db.calc_bond_portfolio_value(cursor)
         self.connection.commit()
-        self.m_textCtrl3.AppendText(f'Completed! \n') 
-        self.m_textCtrl3.AppendText(f'Bond portfolio value: {bond_portfolio_value:,.2f}\n')          
+        self.m_textCtrl3.AppendText(f'Completed! \n')
+        for key in bond_portfolio_value:
+            self.m_textCtrl3.AppendText(f'Bond portfolio "{key}" value: {bond_portfolio_value[key]:,.2f}\n')          
+            
     
     def portfolio_export2CVS(self, event):
         file = open("Export_files\portfolio_exportDB.txt", "w")
