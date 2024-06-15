@@ -1,3 +1,5 @@
+
+
 import wx
 import wx.xrc
 
@@ -108,6 +110,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.w_calc_bond_portfolio_value, id = self.portfolioMarketValue.GetId() )
         self.Bind( wx.EVT_MENU, self.f_portfolio_value_graph, id = self.m_PortfolioValueGraph.GetId() )
         self.Bind( wx.EVT_MENU, self.f_add_to_portfolio_selected, id = self.insertPosition.GetId() )
+        self.Bind( wx.EVT_MENU, self.f_update_portfolio_selected, id = self.updatePosition.GetId() )
         self.Bind( wx.EVT_MENU, self.f_print_portfolio_excel, id = self.m_export2Excel.GetId() )
         self.Bind( wx.EVT_MENU, self.portfolio_export2CVS, id = self.m_ExportCSV.GetId() )
         self.Bind( wx.EVT_MENU, self.f_export_cash_flow_Excel, id = self.m_ExportPayment.GetId() )
@@ -141,6 +144,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def f_add_to_portfolio_selected( self, event ):
+        event.Skip()
+
+    def f_update_portfolio_selected( self, event ):
         event.Skip()
 
     def f_print_portfolio_excel( self, event ):
@@ -243,6 +249,109 @@ class Portfolio_add_bond ( wx.Frame ):
         event.Skip()
 
     def f_add_to_portfolio( self, event ):
+        event.Skip()
+
+
+###########################################################################
+## Class update_position
+###########################################################################
+
+class update_position ( wx.Frame ):
+
+    def __init__( self, parent ):
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 662,300 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        fgSizer3 = wx.FlexGridSizer( 0, 2, 0, 0 )
+        fgSizer3.AddGrowableCol( 0 )
+        fgSizer3.AddGrowableCol( 1 )
+        fgSizer3.AddGrowableRow( 1 )
+        fgSizer3.SetFlexibleDirection( wx.BOTH )
+        fgSizer3.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_ALL )
+
+        self.m_textCtrl6 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer3.Add( self.m_textCtrl6, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText7 = wx.StaticText( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText7.Wrap( -1 )
+
+        fgSizer3.Add( self.m_staticText7, 0, wx.ALL, 5 )
+
+        m_listBox1Choices = []
+        self.m_listBox1 = wx.ListBox( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBox1Choices, 0 )
+        fgSizer3.Add( self.m_listBox1, 0, wx.ALL|wx.EXPAND, 5 )
+
+        gSizer1 = wx.GridSizer( 5, 2, 0, 0 )
+
+        self.m_staticText8 = wx.StaticText( self, wx.ID_ANY, u"ISIN", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText8.Wrap( -1 )
+
+        gSizer1.Add( self.m_staticText8, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl9 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_textCtrl9, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText9 = wx.StaticText( self, wx.ID_ANY, u"QTY", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText9.Wrap( -1 )
+
+        gSizer1.Add( self.m_staticText9, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl10 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_textCtrl10, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText10 = wx.StaticText( self, wx.ID_ANY, u"Tiker", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText10.Wrap( -1 )
+
+        gSizer1.Add( self.m_staticText10, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl11 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_textCtrl11, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText11 = wx.StaticText( self, wx.ID_ANY, u"Portfolio_ID", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText11.Wrap( -1 )
+
+        gSizer1.Add( self.m_staticText11, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl12 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_textCtrl12, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_button3 = wx.Button( self, wx.ID_ANY, u"Update", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_button3, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_button4 = wx.Button( self, wx.ID_ANY, u"CANCEL", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer1.Add( self.m_button4, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+        fgSizer3.Add( gSizer1, 1, wx.EXPAND, 5 )
+
+
+        self.SetSizer( fgSizer3 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+        # Connect Events
+        self.m_textCtrl6.Bind( wx.EVT_TEXT, self.ISIN_char_entered )
+        self.m_listBox1.Bind( wx.EVT_LISTBOX, self.f_lb_ISIN_selected )
+        self.m_button3.Bind( wx.EVT_BUTTON, self.f_update_position )
+        self.m_button4.Bind( wx.EVT_BUTTON, self.f_cancel_button )
+
+    def __del__( self ):
+        pass
+
+
+    # Virtual event handlers, override them in your derived class
+    def ISIN_char_entered( self, event ):
+        event.Skip()
+
+    def f_lb_ISIN_selected( self, event ):
+        event.Skip()
+
+    def f_update_position( self, event ):
+        event.Skip()
+
+    def f_cancel_button( self, event ):
         event.Skip()
 
 
