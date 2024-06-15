@@ -1,6 +1,7 @@
 import wx
 from base_ui_bonds_portfolio import Bonds_portfolio
 from base_ui_bonds_portfolio import Portfolio_add_bond
+from base_ui_bonds_portfolio import update_position
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -32,6 +33,63 @@ class Add_to_portfolio(Portfolio_add_bond):
         
     def f_Cancel_button_pushed( self, event ):
         self.Close()
+        
+class Upd_Position(update_position):
+    def __init__(self, db_connection):
+        super(Upd_Position, self).__init__(parent=None)
+        self.connection=db_connection    
+        
+        
+    def ISIN_char_entered( self, event ):
+        self.m_listBox1.Clear()
+        
+        cursor = self.connection.cursor()
+        isin_template=self.m_textCtrl6.GetValue()
+        sql_str=f'select ISIN, short_name from bond_portfolio where isin like "{isin_template}%" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()
+        
+        lb_lst=[]
+        for res in tbl:
+            lb_item=f'{res[0]} / {res[1]}'
+            lb_lst.append(lb_item)
+        if len(lb_lst)>0:
+            self.m_listBox1.InsertItems(lb_lst, 0)     
+    
+    def f_lb_ISIN_selected( self, event ):
+        selected=self.m_listBox1.GetStringSelection()
+        cursor = self.connection.cursor()
+        isin=selected.split('/')
+        isin=isin[0].strip()
+        
+        sql_str=f'select ISIN, qty, short_name, portfolio_id from bond_portfolio where isin like "{isin}" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()                  
+        self.m_textCtrl9.SetValue(tbl[0])
+        self.m_textCtrl10.SetValue(str(tbl[1]))
+        self.m_textCtrl11.SetValue(tbl[2])
+        self.m_textCtrl12.SetValue(tbl[3])
+        
+        
+    def f_update_position( self, event ):
+        cursor = self.connection.cursor()
+        isin_=self.m_textCtrl9.GetValue()
+        qty_=float(self.m_textCtrl10.GetValue())
+        tiker_=self.m_textCtrl11.GetValue()
+        portfolio_id=self.m_textCtrl12.GetValue()
+        
+        if len(isin_)>3 and qty_>0 and len(tiker_)>0 and len(portfolio_id)>0:
+            sql_str=f'update bond_portfolio set qty={qty_}, short_name="{tiker_}" where isin="{isin_}" and portfolio_id="{portfolio_id}"'
+            print(sql_str)
+            cursor.execute(sql_str)
+            self.connection.commit()              
+            
+        self.Close()
+        
+        
+    def f_cancel_button( self, event ):
+        self.Close()
+    
     
 
 class Bonds_UI(Bonds_portfolio):
@@ -465,6 +523,10 @@ class Bonds_UI(Bonds_portfolio):
     def f_add_to_portfolio_selected( self, event ):
         frame_add=Add_to_portfolio(db_connection=self.connection)
         frame_add.Show()
+        
+    def f_update_portfolio_selected( self, event ):
+        frame_upd=Upd_Position(db_connection=self.connection)
+        frame_upd.Show()        
 
         
 
