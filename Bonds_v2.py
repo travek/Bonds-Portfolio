@@ -499,8 +499,10 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('D1', 'Value', bold)
         worksheet.write('E1', 'currency', bold)
         worksheet.write('F1', 'type', bold)
+        worksheet.write('G1', 'Portfolio_ID', bold)
+        worksheet.write('H1', 'year-month', bold)
                 
-        sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal" from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" and nominal_value>0 ) order by date '
+        sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage", bp.portfolio_id from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal", bp.portfolio_id from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" and nominal_value>0 ) order by date '
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -510,9 +512,14 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col,     item[0])
             worksheet.write(row, col + 1, item[1])
             worksheet.write(row, col + 2, item[2])
-            worksheet.write(row, col + 3, item[3])
+            if item[4]=="USD":
+                worksheet.write(row, col + 3, item[3]*bonds_functions_db.cross_rates["USD"])
+            else:
+                worksheet.write(row, col + 3, item[3])            
             worksheet.write(row, col + 4, item[4])
             worksheet.write(row, col + 5, item[5])
+            worksheet.write(row, col + 6, item[6])
+            worksheet.write(row, col + 7, item[2][0:4]+"-"+item[2][4:6])
                             
             row += 1            
                 
