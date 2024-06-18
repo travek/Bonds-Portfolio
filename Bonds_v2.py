@@ -78,7 +78,7 @@ class Upd_Position(update_position):
         tiker_=self.m_textCtrl11.GetValue()
         portfolio_id=self.m_textCtrl12.GetValue()
         
-        if len(isin_)>3 and qty_>0 and len(tiker_)>0 and len(portfolio_id)>0:
+        if len(isin_)>3 and qty_>=0 and len(tiker_)>0 and len(portfolio_id)>0:
             sql_str=f'update bond_portfolio set qty={qty_}, short_name="{tiker_}" where isin="{isin_}" and portfolio_id="{portfolio_id}"'
             print(sql_str)
             cursor.execute(sql_str)
