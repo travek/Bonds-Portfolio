@@ -45,13 +45,13 @@ class Upd_Position(update_position):
         
         cursor = self.connection.cursor()
         isin_template=self.m_textCtrl6.GetValue()
-        sql_str=f'select ISIN, short_name from bond_portfolio where isin like "{isin_template}%" '
+        sql_str=f'select ISIN, short_name, portfolio_id from bond_portfolio where isin like "{isin_template}%" '
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
         lb_lst=[]
         for res in tbl:
-            lb_item=f'{res[0]} / {res[1]}'
+            lb_item=f'{res[0]} / {res[1]} / {res[2]}'
             lb_lst.append(lb_item)
         if len(lb_lst)>0:
             self.m_listBox1.InsertItems(lb_lst, 0)     
@@ -59,10 +59,12 @@ class Upd_Position(update_position):
     def f_lb_ISIN_selected( self, event ):
         selected=self.m_listBox1.GetStringSelection()
         cursor = self.connection.cursor()
-        isin=selected.split('/')
-        isin=isin[0].strip()
+        selected=selected.split('/')
+        isin=selected[0].strip()
+        portfolio_id=selected[2].strip()
         
-        sql_str=f'select ISIN, qty, short_name, portfolio_id from bond_portfolio where isin like "{isin}" '
+        
+        sql_str=f'select ISIN, qty, short_name, portfolio_id from bond_portfolio where isin like "{isin}" and portfolio_id like "{portfolio_id}" '
         cursor.execute(sql_str)
         tbl = cursor.fetchone()                  
         self.m_textCtrl9.SetValue(tbl[0])
@@ -180,9 +182,12 @@ class Bonds_UI(Bonds_portfolio):
 
         #connection = sqlite3.connect('portfolio_database.db')
         cursor = self.connection.cursor()
+        d = datetime.datetime.today()
+        today_str=d.strftime("%Y%m%d")           
         
         # Create a workbook and add a worksheet.
-        workbook = xlsxwriter.Workbook('Export_files\my_portfolio2.xlsx')
+        f_name=f'Export_files\my_portfolio2-{today_str}.xlsx'
+        workbook = xlsxwriter.Workbook(f_name)
         worksheet = workbook.add_worksheet()
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({'bold': True})
@@ -486,7 +491,8 @@ class Bonds_UI(Bonds_portfolio):
         today_str=d.strftime("%Y%m%d")        
         
         # Create a workbook and add a worksheet.
-        workbook = xlsxwriter.Workbook('Export_files\cash_flows.xlsx')
+        f_name=f'Export_files\cash_flows-{today_str}.xlsx'
+        workbook = xlsxwriter.Workbook(f_name)
         worksheet = workbook.add_worksheet()
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({'bold': True})
