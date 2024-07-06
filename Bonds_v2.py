@@ -466,7 +466,19 @@ class Bonds_UI(Bonds_portfolio):
         for key in bond_portfolio_value:
             self.m_textCtrl3.AppendText(f'Bond portfolio "{key}" value: {bond_portfolio_value[key]:,.2f}\n')          
             
-    
+        
+        sql_str='select date, price FROM market_data where id="my_portfolio" order by date asc'
+        cursor.execute(sql_str)
+        tbl1 = cursor.fetchall()        
+        x_dates=[]
+        y_port_value=[]
+        for item in tbl1:
+            x_dates.append(item[0])
+            y_port_value.append(item[1])
+        fig = go.Figure(data=go.Scatter(x = x_dates, y = y_port_value))
+        fig.show()
+            
+                
     def portfolio_export2CVS(self, event):
         file = open("Export_files\portfolio_exportDB.txt", "w")
         cursor = self.connection.cursor()
@@ -507,6 +519,7 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('F1', 'type', bold)
         worksheet.write('G1', 'Portfolio_ID', bold)
         worksheet.write('H1', 'year-month', bold)
+        worksheet.write('I1', 'bond_type', bold)
                 
         sql_str=f'select * from (select short_name, bp.isin, date, qty*pct_value as value, ifnull(pct_currency, "RUB") as currency, "percentage", bp.portfolio_id from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" union all select short_name, bp.isin, date, qty*nominal_value as value, ifnull(nominal_currency, "RUB") as currency, "nominal", bp.portfolio_id from bond_portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{today_str}" and nominal_value>0 ) order by date '
         cursor.execute(sql_str)
@@ -526,6 +539,7 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col + 5, item[5])
             worksheet.write(row, col + 6, item[6])
             worksheet.write(row, col + 7, item[2][0:4]+"-"+item[2][4:6])
+            worksheet.write(row, col + 8, bonds_functions_db.get_bond_type_by_rating(self.connection.cursor(), item[1]))
                             
             row += 1            
                 
