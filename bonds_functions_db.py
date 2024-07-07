@@ -237,6 +237,14 @@ def calc_bond_portfolio_value(cursor):
         data=get_bond_info_moex(item[0])
         portfolios[item[2]]=portfolios.get(item[2],0)+data["full_price"]*item[1]
         total_val=total_val+data["full_price"]*item[1]
+        #save price to DB
+        post_market_data(cursor, item[0], "bond_price", today_str, data["last_price"])
+        sql_str=f'SELECT isin, ifnull(percent_type, "fixed") FROM bonds_static WHERE isin="{item[0]}" '
+        cursor.execute(sql_str)
+        pct_type = cursor.fetchone()[1]
+        if pct_type=="linker":
+            post_market_data(cursor, item[0], "bond_nominal", today_str, data["nominal"])
+        
         
     sql_str=f'select count(price) from market_data where id="my_portfolio" and date="{today_str}"'
     cursor.execute(sql_str)
@@ -681,5 +689,22 @@ def calc_last_day_of_month(date):
     return end_date
 
 
-
-
+def post_market_data(cursor, isin, post_type, post_date, value):
+    sql_str=f'select price from market_data where id="{isin}" and date="{post_date}" and id_type="{post_type}"'
+    cursor.execute(sql_str)
+    fetch_cnt = cursor.fetchone()
+    
+    price_nominal="pct"
+    if post_type=="bond_nominal":
+        price_nominal="RUB"
+        
+    if cursor.rowcount==-1:
+        sql_str=f'insert into market_data(id, id_type, date, price, price_nominal) values ("{isin}", "{post_type}", "{post_date}", {value}, "{price_nominal}")'
+        cursor.execute(sql_str)        
+    else:
+        sql_str=f'delete from market_data where id="{isin}" and date="{post_date}" and id_type="{post_type}"'
+        cursor.execute(sql_str)   
+        sql_str=f'insert into market_data(id, id_type, date, price, price_nominal) values ("{isin}", "{post_type}", "{post_date}", {value}, "{price_nominal}")'
+        cursor.execute(sql_str)          
+        
+    
