@@ -214,7 +214,7 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('R1', 'Coupon_type', bold)
         worksheet.write('S1', 'Coupon_base', bold)
                 
-        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 '
+        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -482,8 +482,10 @@ class Bonds_UI(Bonds_portfolio):
     def portfolio_export2CVS(self, event):
         file = open("Export_files\portfolio_exportDB.txt", "w")
         cursor = self.connection.cursor()
+        d = datetime.datetime.today()
+        today_str=d.strftime("%Y%m%d")        
         
-        sql_str=f'select isin, qty, short_name, portfolio_id from bond_portfolio where qty>0'
+        sql_str=f'select isin, qty, short_name, portfolio_id from bond_portfolio bp where qty>0 and exists (select * from bonds_schedule bs where bs.isin=bp.isin and bs.date>"{today_str}")'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
