@@ -227,7 +227,7 @@ def calc_bond_portfolio_value(cursor):
     d = datetime.datetime.today()
     today_str=d.strftime("%Y%m%d")
     
-    sql_str=f'SELECT isin, qty, portfolio_id FROM bond_portfolio WHERE qty>0 '
+    sql_str=f'SELECT isin, qty, portfolio_id FROM bond_portfolio bp WHERE qty>0 and exists (select * from bonds_schedule bs where bs.isin=bp.isin and bs.date>"{today_str}") '
     cursor.execute(sql_str)
     tbl = cursor.fetchall()
     
