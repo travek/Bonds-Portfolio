@@ -553,31 +553,6 @@ def print_portfolio_excel():
     workbook.close()
     
 
-def read_portfolio_from_txt(fname):
-    global portfolio_ext    
-    read_pos=open(fname, 'r', encoding='utf-8').read().splitlines() 
-    #print("Reading a file %s..." % (fname))    
-    
-    for line in read_pos:
-        line.rstrip('\n').replace("\n", "")
-        l1=line.split(';')
-        if (len(l1))<2:
-            continue
-
-        #if l1[0]!="RU000A106HB4":
-            #continue
-        
-        elems={"count":float(l1[1]), "moex_code":l1[2], "isin":l1[0]}
-        if l1[0] in portfolio_ext:
-            portfolio_ext[l1[0]]["count"]=portfolio_ext[l1[0]]["count"]+float(l1[1])
-        else:
-            portfolio_ext[l1[0]]=elems
-    
-    #print(portfolio_ext)
-    print(str(len(portfolio_ext))+" instruments in portfolio")    
-    return 0
-
-
 def read_bond_from_txt(cursor, fname):
     
     if fname=="bonds_portfolio.txt":
@@ -610,19 +585,8 @@ def read_bond_from_txt(cursor, fname):
             l2=str(l1[0]).strip()
             l2=line.split(':')
             rating=str(l2[1])
-            continue          
-        
-        sql_str=f'SELECT count(*) FROM bonds_static WHERE 1=1 and ISIN like "{isin}"'
-        cursor.execute(sql_str)
-        fetch_cnt = cursor.fetchone()[0]
-        
-        if fetch_cnt==0:
-            sql_str=f'insert into bonds_static(isin, rating) values("{isin}", "{rating}")'
-            cursor.execute(sql_str)
-            print(f'Inserted: isin={isin}, rating={rating}')
-       
-        #connection.commit()
-                
+            continue                  
+                               
         if len(l1)>1:            
             sd=str(l1[0])
             coupon=0
@@ -646,7 +610,7 @@ def read_bond_from_txt(cursor, fname):
             if fetch_cnt==0:
                 sql_str=f'insert into bonds_schedule(isin, date, pct_value, nominal_value) values("{isin}", "{db_date_insert}", {coupon}, {amortization})'
                 cursor.execute(sql_str)
-                print(f'Inserted: isin={isin}, date={db_date_insert}')
+                print(f'Inserted: isin={isin}, date={db_date_insert}, pct_value={coupon}, nominal_value={amortization}')
            
             #connection.commit()            
             

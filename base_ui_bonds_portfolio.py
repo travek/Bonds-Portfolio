@@ -79,6 +79,9 @@ class Bonds_portfolio ( wx.Frame ):
         self.m_menubar1.Append( self.portfolio, u"Portfolio" )
 
         self.staticData = wx.Menu()
+        self.AddBondStaticData = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add Bond static data", wx.EmptyString, wx.ITEM_NORMAL )
+        self.staticData.Append( self.AddBondStaticData )
+
         self.loadBondFromFile = wx.MenuItem( self.staticData, ID_LOAD_BOND_FROM_FILE, u"Load bond from file", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.loadBondFromFile )
 
@@ -115,6 +118,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.portfolio_export2CVS, id = self.m_ExportCSV.GetId() )
         self.Bind( wx.EVT_MENU, self.f_export_cash_flow_Excel, id = self.m_ExportPayment.GetId() )
         self.Bind( wx.EVT_MENU, self.upload_portfolio_from_file2DB, id = self.uploadFromFile.GetId() )
+        self.Bind( wx.EVT_MENU, self.f_add_bond_static_data, id = self.AddBondStaticData.GetId() )
         self.Bind( wx.EVT_MENU, self.f_load_bond_from_file, id = self.loadBondFromFile.GetId() )
 
     def __del__( self ):
@@ -159,6 +163,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def upload_portfolio_from_file2DB( self, event ):
+        event.Skip()
+
+    def f_add_bond_static_data( self, event ):
         event.Skip()
 
     def f_load_bond_from_file( self, event ):
@@ -211,8 +218,10 @@ class Portfolio_add_bond ( wx.Frame ):
 
         fgSizer2.Add( self.m_staticText4, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_portfolio_id = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        fgSizer2.Add( self.m_portfolio_id, 0, wx.ALL|wx.EXPAND, 5 )
+        m_choice5Choices = [ u"Alexey", u"Olga" ]
+        self.m_choice5 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice5Choices, 0 )
+        self.m_choice5.SetSelection( 0 )
+        fgSizer2.Add( self.m_choice5, 0, wx.ALL|wx.EXPAND, 5 )
 
         self.m_staticText5 = wx.StaticText( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText5.Wrap( -1 )
@@ -352,6 +361,143 @@ class update_position ( wx.Frame ):
         event.Skip()
 
     def f_cancel_button( self, event ):
+        event.Skip()
+
+
+###########################################################################
+## Class Add_Bond
+###########################################################################
+
+class Add_Bond ( wx.Frame ):
+
+    def __init__( self, parent ):
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Bond form", pos = wx.DefaultPosition, size = wx.Size( 609,464 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        gSizer2 = wx.GridSizer( 0, 2, 0, 0 )
+
+        self.m_staticText12 = wx.StaticText( self, wx.ID_ANY, u"Bond ISIN", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText12.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText12, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl11 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl11, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText13 = wx.StaticText( self, wx.ID_ANY, u"Bond tiker", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText13.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText13, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl12 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl12, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText14 = wx.StaticText( self, wx.ID_ANY, u"Bond coupon type", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText14.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText14, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice1Choices = [ u"fixed", u"float", u"linker" ]
+        self.m_choice1 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice1Choices, 0 )
+        self.m_choice1.SetSelection( 0 )
+        gSizer2.Add( self.m_choice1, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText23 = wx.StaticText( self, wx.ID_ANY, u"Float Bond percent base", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText23.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText23, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice4Choices = [ u"none", u"RUONIA", u"КС" ]
+        self.m_choice4 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice4Choices, 0 )
+        self.m_choice4.SetSelection( 0 )
+        gSizer2.Add( self.m_choice4, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText24 = wx.StaticText( self, wx.ID_ANY, u"Float bond addon to base", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText24.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText24, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl18 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl18, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText15 = wx.StaticText( self, wx.ID_ANY, u"Bond issue date", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText15.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText15, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl13 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl13, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText16 = wx.StaticText( self, wx.ID_ANY, u"Bond maturity date", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText16.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText16, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl14 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl14, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText17 = wx.StaticText( self, wx.ID_ANY, u"Bond call option dates", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText17.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText17, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl15 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl15, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText18 = wx.StaticText( self, wx.ID_ANY, u"Bond put option dates", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText18.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText18, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl16 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_textCtrl16, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText19 = wx.StaticText( self, wx.ID_ANY, u"Bond credit rating", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText19.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText19, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice2Choices = [ u"Gov", u"AAA", u"AAA-", u"AA+", u"AA", u"AA-", u"A+", u"A", u"A-", u"BBB+", u"BBB", u"BBB-", u"BB+", u"BB", u"BB-", u"B+", u"B", u"B-", u"CCC", u"CC", u"C", u"D" ]
+        self.m_choice2 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice2Choices, 0 )
+        self.m_choice2.SetSelection( 0 )
+        gSizer2.Add( self.m_choice2, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText20 = wx.StaticText( self, wx.ID_ANY, u"Bond issuer", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText20.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText20, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice3Choices = []
+        self.m_choice3 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice3Choices, 0 )
+        self.m_choice3.SetSelection( 0 )
+        gSizer2.Add( self.m_choice3, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_button5 = wx.Button( self, wx.ID_ANY, u"Add bond", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_button5, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+
+        self.m_button6 = wx.Button( self, wx.ID_ANY, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer2.Add( self.m_button6, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+
+
+        self.SetSizer( gSizer2 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+        # Connect Events
+        self.m_button5.Bind( wx.EVT_BUTTON, self.Add_bond_add )
+        self.m_button6.Bind( wx.EVT_BUTTON, self.Add_bond_cancel )
+
+    def __del__( self ):
+        pass
+
+
+    # Virtual event handlers, override them in your derived class
+    def Add_bond_add( self, event ):
+        event.Skip()
+
+    def Add_bond_cancel( self, event ):
         event.Skip()
 
 
