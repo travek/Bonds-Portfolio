@@ -2,6 +2,7 @@ import wx
 from base_ui_bonds_portfolio import Bonds_portfolio
 from base_ui_bonds_portfolio import Portfolio_add_bond
 from base_ui_bonds_portfolio import update_position
+from base_ui_bonds_portfolio import Add_Bond
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -20,7 +21,7 @@ class Add_to_portfolio(Portfolio_add_bond):
         isin_=self.m_ISIN_input.GetValue().strip()
         qty_=float(self.m_quantity_input.GetValue().strip())
         tiker_=self.m_tiker_input.GetValue().strip()
-        portfolio_id=self.m_portfolio_id.GetValue().strip()
+        portfolio_id=self.m_choice5.GetString(self.m_choice5.GetCurrentSelection())
         print(f'{isin_}, {qty_}, {tiker_}, {portfolio_id}')
         cursor = self.connection.cursor()
         
@@ -33,6 +34,47 @@ class Add_to_portfolio(Portfolio_add_bond):
         
     def f_Cancel_button_pushed( self, event ):
         self.Close()
+        
+class my_Add_Bond(Add_Bond):
+    def __init__(self, db_connection):
+        super(my_Add_Bond, self).__init__(parent=None)
+        self.connection=db_connection    
+        
+
+    def Add_bond_add( self, event ):
+        isin_=self.m_textCtrl11.GetValue().strip()
+        tiker_=self.m_textCtrl12.GetValue().strip()
+        coupon_type=self.m_choice1.GetString(self.m_choice1.GetCurrentSelection())
+        coupon_base=self.m_choice4.GetString(self.m_choice4.GetCurrentSelection())
+        coupon_addon=self.m_textCtrl18.GetValue().strip()
+        issue_date=self.m_textCtrl13.GetValue().strip()
+        maturity_date=self.m_textCtrl14.GetValue().strip()
+        calls=self.m_textCtrl15.GetValue().strip()
+        puts=self.m_textCtrl16.GetValue().strip()
+        credit_rating=self.m_choice2.GetString(self.m_choice2.GetCurrentSelection())
+        percent_base=f'{coupon_base}+{coupon_addon}'
+        
+        print(f'{isin_}, {tiker_}, {coupon_type}, {issue_date}, {maturity_date}, {calls}, {puts}, {credit_rating} ')
+        
+        cursor = self.connection.cursor()
+        sql_str=f'select count(*) from bonds_static where isin="{isin_}" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        
+        if tbl[0]>0:
+            print(f'Bond {isin_} already in DB')
+        else:
+            sql_str=f'insert into bonds_static(isin, rating, issue_date, percent_type, percent_base, maturity_date, call_opt_date, put_opt_dates ) values ("{isin_}",  "{credit_rating}",  "{issue_date}", "{coupon_type}", "{percent_base}", "{maturity_date}", "{calls}", "{puts}")'
+            print(sql_str)
+            cursor.execute(sql_str)
+            self.connection.commit()   
+            self.Close()
+        
+
+    def Add_bond_cancel( self, event ):
+        self.Close()
+        
+    
         
 class Upd_Position(update_position):
     def __init__(self, db_connection):
@@ -259,9 +301,42 @@ class Bonds_UI(Bonds_portfolio):
             path = fd.GetPath()
         fd.Destroy()
         
-        bonds_functions_db.read_bond_from_txt(self.connection.cursor(), path)
-        self.connection.commit()
-        self.m_textCtrl3.AppendText(f'Bond schedule uploaded into DB! \n')              
+        read_rates=open(path, 'r').read().splitlines() 
+        isin=""
+         
+        for i in range(0, len(read_rates)):
+            line=read_rates[i]
+            line.rstrip('\n').replace("\n", "")
+            l1=line.split(';')
+            
+            if l1[0].startswith('isin') or l1[0].startswith('Isin') or l1[0].startswith('ISIN'):
+                l2=str(l1[0]).strip()
+                l2=line.split(':')
+                isin=str(l2[1])
+                if len(isin)!=12:
+                    print(f'Isin code {isin} has length not equl 12. Error, processing this file {fname} stoped!')
+                    break                            
+            
+            if i==0 and len(str(l1[0]).strip())==12: 
+                isin=str(l1[0]).strip()
+                break
+        
+        read_rates.close()
+        
+        sql_str=f'SELECT count(*) FROM bonds_static WHERE 1=1 and ISIN like "{isin}"'
+        cursor.execute(sql_str)
+        fetch_cnt = cursor.fetchone()[0]
+        
+        if fetch_cnt==0:
+            self.m_textCtrl3.AppendText(f'Error! Add bond to the dictionary first, no static data for bond with ISIN {isin} \n')
+            return -1   
+        
+        res=bonds_functions_db.read_bond_from_txt(self.connection.cursor(), path)
+        if res==0:
+            self.connection.commit()
+            self.m_textCtrl3.AppendText(f'Bond schedule with ISIN={isin} uploaded into DB! \n')              
+        elif res!=0:
+            self.m_textCtrl3.AppendText(f'Error! return code={res}\n')
         
         return 0
     
@@ -556,6 +631,10 @@ class Bonds_UI(Bonds_portfolio):
     def f_update_portfolio_selected( self, event ):
         frame_upd=Upd_Position(db_connection=self.connection)
         frame_upd.Show()        
+        
+    def f_add_bond_static_data( self, event ):
+        frame_add_bond=my_Add_Bond(db_connection=self.connection)
+        frame_add_bond.Show()          
 
         
 
