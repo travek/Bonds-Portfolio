@@ -1,5 +1,4 @@
 
-
 import wx
 import wx.xrc
 
@@ -85,6 +84,9 @@ class Bonds_portfolio ( wx.Frame ):
         self.loadBondFromFile = wx.MenuItem( self.staticData, ID_LOAD_BOND_FROM_FILE, u"Load bond from file", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.loadBondFromFile )
 
+        self.m_menuEntity = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add Entity", wx.EmptyString, wx.ITEM_NORMAL )
+        self.staticData.Append( self.m_menuEntity )
+
         self.m_menubar1.Append( self.staticData, u"Static data" )
 
         self.SetMenuBar( self.m_menubar1 )
@@ -120,6 +122,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.upload_portfolio_from_file2DB, id = self.uploadFromFile.GetId() )
         self.Bind( wx.EVT_MENU, self.f_add_bond_static_data, id = self.AddBondStaticData.GetId() )
         self.Bind( wx.EVT_MENU, self.f_load_bond_from_file, id = self.loadBondFromFile.GetId() )
+        self.Bind( wx.EVT_MENU, self.f_Add_Entity_Action, id = self.m_menuEntity.GetId() )
 
     def __del__( self ):
         pass
@@ -169,6 +172,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def f_load_bond_from_file( self, event ):
+        event.Skip()
+
+    def f_Add_Entity_Action( self, event ):
         event.Skip()
 
 
@@ -498,6 +504,89 @@ class Add_Bond ( wx.Frame ):
         event.Skip()
 
     def Add_bond_cancel( self, event ):
+        event.Skip()
+
+
+###########################################################################
+## Class Entity
+###########################################################################
+
+class Entity ( wx.Frame ):
+
+    def __init__( self, parent ):
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 511,327 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        bSizer1 = wx.BoxSizer( wx.VERTICAL )
+
+        self.m_staticText23 = wx.StaticText( self, wx.ID_ANY, u"Manage Entity", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_CENTER_HORIZONTAL )
+        self.m_staticText23.Wrap( -1 )
+
+        bSizer1.Add( self.m_staticText23, 0, wx.ALL|wx.EXPAND, 5 )
+
+        gSizer3 = wx.GridSizer( 6, 2, 0, 0 )
+
+        self.m_staticText24 = wx.StaticText( self, wx.ID_ANY, u"UTI (INN)", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText24.Wrap( -1 )
+
+        gSizer3.Add( self.m_staticText24, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl17 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_textCtrl17, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText25 = wx.StaticText( self, wx.ID_ANY, u"Short name", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText25.Wrap( -1 )
+
+        gSizer3.Add( self.m_staticText25, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl18 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_textCtrl18, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText26 = wx.StaticText( self, wx.ID_ANY, u"Full name", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText26.Wrap( -1 )
+
+        gSizer3.Add( self.m_staticText26, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl19 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_textCtrl19, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText27 = wx.StaticText( self, wx.ID_ANY, u"Comment", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText27.Wrap( -1 )
+
+        gSizer3.Add( self.m_staticText27, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl20 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_textCtrl20, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 5 )
+
+        self.m_button7 = wx.Button( self, wx.ID_ANY, u"Add", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_button7, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5 )
+
+        self.m_button8 = wx.Button( self, wx.ID_ANY, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer3.Add( self.m_button8, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5 )
+
+
+        bSizer1.Add( gSizer3, 1, wx.EXPAND, 5 )
+
+
+        self.SetSizer( bSizer1 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+        # Connect Events
+        self.m_button7.Bind( wx.EVT_BUTTON, self.f_add_entity )
+        self.m_button8.Bind( wx.EVT_BUTTON, self.f_cancel_entity )
+
+    def __del__( self ):
+        pass
+
+
+    # Virtual event handlers, override them in your derived class
+    def f_add_entity( self, event ):
+        event.Skip()
+
+    def f_cancel_entity( self, event ):
         event.Skip()
 
 

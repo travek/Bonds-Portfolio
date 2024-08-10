@@ -26,6 +26,24 @@ def get_bond_maturity(cursor, isin):
     
     return d
 
+def get_bond_amortization(cursor, isin):
+    amo={}
+    d = datetime.datetime.today()
+    today_str=d.strftime("%Y%m%d")    
+    
+    sql_str=f'select ifnull(min(date), "na") from bonds_schedule where isin="{isin}" and date>"{today_str}" and nominal_value>0 and date<>(select max(date) from bonds_schedule where isin="{isin}" and nominal_value>0) '
+    cursor.execute(sql_str)
+    amo_date = cursor.fetchone()[0]    
+    
+    if amo_date=="na":
+        return {"date":"", "value":0}
+    
+    sql_str=f'select ifnull(nominal_value, 0) from bonds_schedule where isin="{isin}" and date="{amo_date}"'
+    cursor.execute(sql_str)
+    amo_value = cursor.fetchone()[0]
+    
+    return {"date":amo_date, "value":amo_value}
+
 def get_bond_rating(cursor, isin):
     #cursor = connection.cursor()
     
@@ -38,6 +56,25 @@ def get_bond_rating(cursor, isin):
     cursor.execute(sql_str)
     sql_res = cursor.fetchone()
     results['currency']=sql_res[0]
+       
+    return results
+
+def get_bond_issuer(cursor, isin):
+    #cursor = connection.cursor()
+    
+    sql_str=f'select ifnull(issuer_uti,"") from bonds_static WHERE ISIN like "{isin}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    uti=sql_res[0]
+    results={'issuer_uti':uti}
+    
+    sql_str=f'select ifnull(short_name,"") from entity where uti like "{uti}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    if sql_res is not None:
+        results['issuer_short_name']=sql_res[0]
+    else:
+        results['issuer_short_name']=""
        
     return results
 
