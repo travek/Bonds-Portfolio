@@ -3,6 +3,7 @@ from base_ui_bonds_portfolio import Bonds_portfolio
 from base_ui_bonds_portfolio import Portfolio_add_bond
 from base_ui_bonds_portfolio import update_position
 from base_ui_bonds_portfolio import Add_Bond
+from base_ui_bonds_portfolio import Entity
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -12,6 +13,31 @@ import pandas as pd
 import plotly.subplots as ps
 import plotly.graph_objs as go
 
+
+class CEntity(Entity):
+    def __init__(self, db_connection):
+        super(CEntity, self).__init__(parent=None)
+        self.connection=db_connection                
+                
+    def f_add_entity(self, event):
+        uti=self.m_textCtrl17.GetValue().strip()
+        short_name=self.m_textCtrl18.GetValue().strip()
+        short_name=short_name.translate({ord(i):None for i in '"'})
+        full_name=self.m_textCtrl19.GetValue().strip()
+        full_name=full_name.translate({ord(i):None for i in '"'})
+        cursor = self.connection.cursor()
+        
+        if len(uti)>5 and len(short_name)>3:
+            sql_str=f'insert into entity(UTI, short_name, long_name) values("{uti}", "{short_name}", "{full_name}" )'
+            cursor.execute(sql_str)
+            self.connection.commit()         
+        
+        self.Close()
+        
+    def f_cancel_entity(self, event):
+        self.Close()
+        
+    
 class Add_to_portfolio(Portfolio_add_bond):
     def __init__(self, db_connection):
         super(Add_to_portfolio, self).__init__(parent=None)
@@ -38,8 +64,21 @@ class Add_to_portfolio(Portfolio_add_bond):
 class my_Add_Bond(Add_Bond):
     def __init__(self, db_connection):
         super(my_Add_Bond, self).__init__(parent=None)
-        self.connection=db_connection    
+        self.connection=db_connection
         
+        sql_str=f'select short_name, uti from entity'
+        cursor = self.connection.cursor()
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()
+        
+        lb_lst=[]
+        for res in tbl:
+            lb_item=f'{res[0]} / {res[1]}'
+            lb_lst.append(lb_item)
+            
+        if len(lb_lst)>0:
+            self.m_choice3.SetItems(lb_lst)              
+                
 
     def Add_bond_add( self, event ):
         isin_=self.m_textCtrl11.GetValue().strip()
@@ -52,7 +91,10 @@ class my_Add_Bond(Add_Bond):
         calls=self.m_textCtrl15.GetValue().strip()
         puts=self.m_textCtrl16.GetValue().strip()
         credit_rating=self.m_choice2.GetString(self.m_choice2.GetCurrentSelection())
-        percent_base=f'{coupon_base}+{coupon_addon}'
+        if coupon_type=="fixed":
+            percent_base=""
+        else:
+            percent_base=f'{coupon_base}+{coupon_addon}'
         
         print(f'{isin_}, {tiker_}, {coupon_type}, {issue_date}, {maturity_date}, {calls}, {puts}, {credit_rating} ')
         
@@ -64,7 +106,7 @@ class my_Add_Bond(Add_Bond):
         if tbl[0]>0:
             print(f'Bond {isin_} already in DB')
         else:
-            sql_str=f'insert into bonds_static(isin, rating, issue_date, percent_type, percent_base, maturity_date, call_opt_date, put_opt_dates ) values ("{isin_}",  "{credit_rating}",  "{issue_date}", "{coupon_type}", "{percent_base}", "{maturity_date}", "{calls}", "{puts}")'
+            sql_str=f'insert into bonds_static(isin, rating, issue_date, percent_type, percent_base, maturity_date, call_opt_date, put_opt_dates, tiker ) values ("{isin_}",  "{credit_rating}",  "{issue_date}", "{coupon_type}", "{percent_base}", "{maturity_date}", "{calls}", "{puts}", "{tiker_}")'
             print(sql_str)
             cursor.execute(sql_str)
             self.connection.commit()   
@@ -84,10 +126,13 @@ class Upd_Position(update_position):
         
     def ISIN_char_entered( self, event ):
         self.m_listBox1.Clear()
+        d = datetime.datetime.today()
+        today_str=d.strftime("%Y%m%d")           
         
         cursor = self.connection.cursor()
         isin_template=self.m_textCtrl6.GetValue()
-        sql_str=f'select ISIN, short_name, portfolio_id from bond_portfolio where isin like "{isin_template}%" '
+        
+        sql_str=f'select bp.ISIN, bp.short_name, bp.portfolio_id from bond_portfolio bp join bonds_static bs on bs.isin=bp.isin where (bp.isin like "{isin_template}%" or bs.tiker like "{isin_template}%") and (bs.maturity_date>"{today_str}" or bs.maturity_date is null)'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -253,10 +298,19 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('O1', 'Coupon_yield', bold)
         worksheet.write('P1', 'Coupon_period', bold)
         worksheet.write('Q1', 'Portfolio ID', bold)
-        worksheet.write('R1', 'Coupon_type', bold)
-        worksheet.write('S1', 'Coupon_base', bold)
+
+        worksheet.write('R1', 'amo date', bold)
+        worksheet.write('S1', 'amo value', bold)
+        
+        worksheet.write('T1', 'Coupon_type', bold)
+        worksheet.write('U1', 'Coupon_base', bold)        
+        
+        worksheet.write('V1', 'Call option dates', bold) 
+        worksheet.write('W1', 'Put option dates', bold) 
+        worksheet.write('X1', 'Issuer entity', bold) 
+        
                 
-        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
+        sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -281,11 +335,24 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col + 11, moex_data["duration"]/365 )
             worksheet.write(row, col + 12, bonds_functions_db.get_bond_type_by_rating(self.connection.cursor(), item[0]) )
             worksheet.write(row, col + 13, moex_data["last_price"])
-            worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
+            try:
+                worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
+            except ZeroDivisionError:
+                    worksheet.write(row, col + 14, moex_data["current_coupon"])
             worksheet.write(row, col + 15, moex_data["coupon_period"])
             worksheet.write(row, col + 16, item[5])
-            worksheet.write(row, col + 17, item[3])
-            worksheet.write(row, col + 18, item[4])
+
+            amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), item[0])
+            worksheet.write(row, col + 17, amo_value.get("date"))            
+            worksheet.write(row, col + 18, amo_value.get("value"))
+            
+            worksheet.write(row, col + 19, item[3])
+            worksheet.write(row, col + 20, item[4]) 
+            
+            worksheet.write(row, col + 21, item[6])  
+            worksheet.write(row, col + 22, item[7])
+            issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), item[0])
+            worksheet.write(row, col + 23, issuer["issuer_short_name"])  
                             
             row += 1            
                 
@@ -296,10 +363,12 @@ class Bonds_UI(Bonds_portfolio):
         #connection.close()
         
     def f_load_bond_from_file( self, event ):        
+        self.m_textCtrl3.Clear()
         fd = wx.FileDialog(self, message="Choose a file", style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST, wildcard="Text files (*.txt)|*.txt", defaultDir="d:\\Alexey\\Python Projects\\Bonds CF\\Data\\", defaultFile="example.txt")
         if fd.ShowModal() == wx.ID_OK:
             path = fd.GetPath()
         fd.Destroy()
+        cursor = self.connection.cursor()
         
         read_rates=open(path, 'r').read().splitlines() 
         isin=""
@@ -321,7 +390,7 @@ class Bonds_UI(Bonds_portfolio):
                 isin=str(l1[0]).strip()
                 break
         
-        read_rates.close()
+        #read_rates.close()
         
         sql_str=f'SELECT count(*) FROM bonds_static WHERE 1=1 and ISIN like "{isin}"'
         cursor.execute(sql_str)
@@ -635,7 +704,10 @@ class Bonds_UI(Bonds_portfolio):
     def f_add_bond_static_data( self, event ):
         frame_add_bond=my_Add_Bond(db_connection=self.connection)
         frame_add_bond.Show()          
-
+        
+    def f_Add_Entity_Action( self, event ):
+        frame_Entity=CEntity(db_connection=self.connection)
+        frame_Entity.Show()             
         
 
 if __name__ == "__main__":
