@@ -13,7 +13,7 @@ import sqlite3
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':89}
+cross_rates={'USD':91.6}
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
@@ -145,6 +145,7 @@ def get_bond_nearest_coupon(cursor, isin):
 def get_bond_info_moex(isin):
     secid=""
     shortname=""
+    inn=""
     req_str='https://iss.moex.com/iss/securities.json?q='+isin+"'"
     j=requests.get(req_str).json() #Получить инструмент по isin коду  #'https://iss.moex.com/iss/securities.json?q=RU000A105XV1'
     if len(j['securities']['data'])<1:
@@ -155,18 +156,24 @@ def get_bond_info_moex(isin):
         if f=="secid":
             secid=b
         if f=="shortname":
-            shortname=b                            
+            shortname=b
+        if f=="emitent_inn":
+            inn=b
                 
     req_str='https://iss.moex.com/iss/engines/stock/markets/bonds/securities/'+secid+'.json?marketprice_board=1'
     nkd=0
     nominal=0
     last_price=0
+    fixed_coupon=0
     j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
     for f, b in zip(j['securities']['columns'], j['securities']['data'][0]):
         if f=="ACCRUEDINT":
             nkd=b
         if f=="FACEVALUE":
             nominal=b        
+        if f=="COUPONPERCENT":
+            if b is not None:
+                fixed_coupon=b
     
     last_price=0
     for f, b in zip(j['marketdata']['columns'], j['marketdata']['data'][0]):
@@ -220,6 +227,8 @@ def get_bond_info_moex(isin):
     bond_info["nkd"]=nkd
     bond_info["nominal"]=nominal
     bond_info["last_price"]=last_price
+    bond_info["emitent_inn"]=inn
+    bond_info["fixed_coupon"]=fixed_coupon
     full_price=0.0
     if bond_currency in ["USD"]:
         full_price=nominal*last_price*cross_rates.get(bond_currency)/100+nkd

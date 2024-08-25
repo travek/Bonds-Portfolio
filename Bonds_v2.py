@@ -22,15 +22,22 @@ class CEntity(Entity):
     def f_add_entity(self, event):
         uti=self.m_textCtrl17.GetValue().strip()
         short_name=self.m_textCtrl18.GetValue().strip()
-        short_name=short_name.translate({ord(i):None for i in '"'})
+        short_name=short_name.translate({ord(i): None for i in '"'})
         full_name=self.m_textCtrl19.GetValue().strip()
-        full_name=full_name.translate({ord(i):None for i in '"'})
+        full_name=full_name.translate({ord(i): None for i in '"'})
         cursor = self.connection.cursor()
         
-        if len(uti)>5 and len(short_name)>3:
-            sql_str=f'insert into entity(UTI, short_name, long_name) values("{uti}", "{short_name}", "{full_name}" )'
-            cursor.execute(sql_str)
-            self.connection.commit()         
+        sql_str=f'select count(*) from entity where UTI like "{uti}" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        
+        if tbl[0]>0:
+            print(f'Entity UTI={uti} already in DB')
+        else:        
+            if len(uti)>5 and len(short_name)>3:
+                sql_str=f'insert into entity(UTI, short_name, long_name) values("{uti}", "{short_name}", "{full_name}" )'
+                cursor.execute(sql_str)
+                self.connection.commit()         
         
         self.Close()
         
@@ -66,7 +73,7 @@ class my_Add_Bond(Add_Bond):
         super(my_Add_Bond, self).__init__(parent=None)
         self.connection=db_connection
         
-        sql_str=f'select short_name, uti from entity'
+        sql_str=f'select short_name, uti from entity order by short_name'
         cursor = self.connection.cursor()
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
@@ -95,8 +102,14 @@ class my_Add_Bond(Add_Bond):
             percent_base=""
         else:
             percent_base=f'{coupon_base}+{coupon_addon}'
+        le=self.m_choice3.GetString(self.m_choice3.GetCurrentSelection())
+        if len(le)>5:
+            le_details=le.split('/')
+            li_uti=le_details[1].strip()
+        else:
+            li_uti=""
         
-        print(f'{isin_}, {tiker_}, {coupon_type}, {issue_date}, {maturity_date}, {calls}, {puts}, {credit_rating} ')
+        print(f'{isin_}, {tiker_}, {coupon_type}, {issue_date}, {maturity_date}, {calls}, {puts}, {credit_rating}, {li_uti} ')
         
         cursor = self.connection.cursor()
         sql_str=f'select count(*) from bonds_static where isin="{isin_}" '
@@ -105,8 +118,10 @@ class my_Add_Bond(Add_Bond):
         
         if tbl[0]>0:
             print(f'Bond {isin_} already in DB')
+        elif len(li_uti)<5:
+            print(f'Legal entity is NOT selected!!!')
         else:
-            sql_str=f'insert into bonds_static(isin, rating, issue_date, percent_type, percent_base, maturity_date, call_opt_date, put_opt_dates, tiker ) values ("{isin_}",  "{credit_rating}",  "{issue_date}", "{coupon_type}", "{percent_base}", "{maturity_date}", "{calls}", "{puts}", "{tiker_}")'
+            sql_str=f'insert into bonds_static(isin, rating, issue_date, percent_type, percent_base, maturity_date, call_opt_date, put_opt_dates, tiker, issuer_uti ) values ("{isin_}",  "{credit_rating}",  "{issue_date}", "{coupon_type}", "{percent_base}", "{maturity_date}", "{calls}", "{puts}", "{tiker_}", "{li_uti}")'
             print(sql_str)
             cursor.execute(sql_str)
             self.connection.commit()   
@@ -195,10 +210,9 @@ class Bonds_UI(Bonds_portfolio):
         self.connection.close() 
         
     def run_data_checks(self, event):
-        cursor = self.connection.cursor()
-        
+        cursor = self.connection.cursor()        
         #Check Bonds without payment schedule in DB
-        self.m_textCtrl3.Clear()
+        self.m_textCtrl3.Clear()        
         
         sql_str='select short_name, isin from bond_portfolio where isin not in (select isin from bonds_schedule)'
         cursor.execute(sql_str)
@@ -216,6 +230,20 @@ class Bonds_UI(Bonds_portfolio):
         for item in tbl:
             str=f'Bond {item[0]} doesnt have payment amount in bonds_schedule table in DB for current time period! \n'
             self.m_textCtrl3.AppendText(str)        
+            
+        sql_str=f'select count(*) from bonds_static bs where issuer_uti is null and (select max(date) as maturity from bonds_schedule where isin=bs.isin)>"{today_str}" and (select qty from bond_portfolio where isin=bs.isin)>0'
+        cursor.execute(sql_str)
+        res_inn=cursor.fetchone()[0]
+        if res_inn>0:
+            sql_str=f'select isin from bonds_static bs where issuer_uti is null and (select max(date) as maturity from bonds_schedule where isin=bs.isin)>"{today_str}" and (select qty from bond_portfolio where isin=bs.isin)>0'
+            cursor.execute(sql_str)
+            tbl = cursor.fetchall()
+            for item in tbl:
+                bond_info=bonds_functions_db.get_bond_info_moex(item[0])
+                emitent_inn=bond_info["emitent_inn"]
+                sql_str=f'update bonds_static set issuer_uti="{emitent_inn}" where isin like "{item[0]}" '
+                cursor.execute(sql_str)
+                self.connection.commit() 
         
         self.m_textCtrl3.AppendText('Data checks completed!\n')
         
@@ -224,44 +252,45 @@ class Bonds_UI(Bonds_portfolio):
     def upload_portfolio_from_file2DB( self, event ):
         event.Skip()
         
-        read_pos=open("bonds_portfolio.txt", 'r', encoding='utf-8').read().splitlines() 
-        
-        cursor = self.connection.cursor()
-        sql_str=f'delete from bond_portfolio'
-        cursor.execute(sql_str)
-        self.connection.commit()        
-        
-        for line in read_pos:
-            line.rstrip('\n').replace("\n", "")
-            l1=line.split(';')
-            if (len(l1))<2:
-                continue
-    
-            #elems={"count":float(l1[1]), "moex_code":l1[2], "isin":l1[0]}
+        if wx.MessageBox("Are You Sure you want to upload portfolio from file into DB?","Checking",wx.YES_NO) == wx.YES:
+            read_pos=open("bonds_portfolio.txt", 'r', encoding='utf-8').read().splitlines() 
             
-            sql_str=f'SELECT count(*) FROM bond_portfolio WHERE 1=1 and ISIN like "{l1[0]}"'
+            cursor = self.connection.cursor()
+            sql_str=f'delete from bond_portfolio'
+            cursor.execute(sql_str)
+            self.connection.commit()        
+            
+            for line in read_pos:
+                line.rstrip('\n').replace("\n", "")
+                l1=line.split(';')
+                if (len(l1))<2:
+                    continue
+        
+                #elems={"count":float(l1[1]), "moex_code":l1[2], "isin":l1[0]}
+                
+                sql_str=f'SELECT count(*) FROM bond_portfolio WHERE 1=1 and ISIN like "{l1[0]}"'
+                cursor.execute(sql_str)
+                cnt = cursor.fetchone()[0]
+                if cnt==0:
+                    sql_str=f'insert into bond_portfolio values("{l1[0]}", {float(l1[1])}, "{l1[2]}")'
+                    cursor.execute(sql_str)
+                    print(f'Inserted: isin={l1[0]}, count={l1[1]}, short_name={l1[2]}')
+                else:
+                    sql_str=f'delete from bond_portfolio where isin = "{l1[0]}"'
+                    cursor.execute(sql_str)
+                    print(f'Deleted: isin={l1[0]}, count={l1[1]}, short_name={l1[1]}')
+                    sql_str=f'insert into bond_portfolio values("{l1[0]}", {float(l1[1])}, "{l1[2]}")'
+                    cursor.execute(sql_str)
+                    print(f'Inserted: isin={l1[0]}, count={l1[1]}, short_name={l1[1]}')
+                
+                    
+                self.connection.commit()
+            
+            sql_str=f'SELECT count(*) FROM bond_portfolio'
             cursor.execute(sql_str)
             cnt = cursor.fetchone()[0]
-            if cnt==0:
-                sql_str=f'insert into bond_portfolio values("{l1[0]}", {float(l1[1])}, "{l1[2]}")'
-                cursor.execute(sql_str)
-                print(f'Inserted: isin={l1[0]}, count={l1[1]}, short_name={l1[2]}')
-            else:
-                sql_str=f'delete from bond_portfolio where isin = "{l1[0]}"'
-                cursor.execute(sql_str)
-                print(f'Deleted: isin={l1[0]}, count={l1[1]}, short_name={l1[1]}')
-                sql_str=f'insert into bond_portfolio values("{l1[0]}", {float(l1[1])}, "{l1[2]}")'
-                cursor.execute(sql_str)
-                print(f'Inserted: isin={l1[0]}, count={l1[1]}, short_name={l1[1]}')
             
-                
-            self.connection.commit()
-        
-        sql_str=f'SELECT count(*) FROM bond_portfolio'
-        cursor.execute(sql_str)
-        cnt = cursor.fetchone()[0]
-        
-        print(f'There are {cnt} posions in portfolio')
+            print(f'There are {cnt} posions in portfolio')
           
 
     def f_print_portfolio_excel( self, event ):
@@ -299,15 +328,17 @@ class Bonds_UI(Bonds_portfolio):
         worksheet.write('P1', 'Coupon_period', bold)
         worksheet.write('Q1', 'Portfolio ID', bold)
 
-        worksheet.write('R1', 'amo date', bold)
-        worksheet.write('S1', 'amo value', bold)
+        worksheet.write('R1', 'Issuer entity', bold) 
         
-        worksheet.write('T1', 'Coupon_type', bold)
-        worksheet.write('U1', 'Coupon_base', bold)        
+        worksheet.write('S1', 'amo date', bold)
+        worksheet.write('T1', 'amo value', bold)
         
-        worksheet.write('V1', 'Call option dates', bold) 
-        worksheet.write('W1', 'Put option dates', bold) 
-        worksheet.write('X1', 'Issuer entity', bold) 
+        worksheet.write('U1', 'Coupon_type', bold)
+        worksheet.write('V1', 'Coupon_base', bold)        
+        
+        worksheet.write('W1', 'Call option dates', bold) 
+        worksheet.write('X1', 'Put option dates', bold) 
+        worksheet.write('Y1', 'Current coupon', bold) 
         
                 
         sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM bond_portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
@@ -325,7 +356,8 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), item[0]), date_format)
             worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), item[0]), date_format)
             worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), item[0]))
-            worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
+            #worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
+            worksheet.write(row, col + 6, moex_data["nominal"])
             worksheet.write(row, col + 7, bond_rating['rating'])     
             worksheet.write(row, col + 8, moex_data["yield"] )
 
@@ -341,18 +373,25 @@ class Bonds_UI(Bonds_portfolio):
                     worksheet.write(row, col + 14, moex_data["current_coupon"])
             worksheet.write(row, col + 15, moex_data["coupon_period"])
             worksheet.write(row, col + 16, item[5])
+            
+            issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), item[0])
+            worksheet.write(row, col + 17, issuer["issuer_short_name"])              
 
             amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), item[0])
-            worksheet.write(row, col + 17, amo_value.get("date"))            
-            worksheet.write(row, col + 18, amo_value.get("value"))
+            if amo_value.get("date")!='':
+                d = datetime.datetime.strptime(amo_value.get("date", None), '%Y%m%d')
+                worksheet.write_datetime(row, col + 18, d, date_format)            
+                worksheet.write(row, col + 19, amo_value.get("value"))
             
-            worksheet.write(row, col + 19, item[3])
-            worksheet.write(row, col + 20, item[4]) 
+            worksheet.write(row, col + 20, item[3])
+            worksheet.write(row, col + 21, item[4]) 
             
-            worksheet.write(row, col + 21, item[6])  
-            worksheet.write(row, col + 22, item[7])
-            issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), item[0])
-            worksheet.write(row, col + 23, issuer["issuer_short_name"])  
+            worksheet.write(row, col + 22, item[6])  
+            worksheet.write(row, col + 23, item[7])
+            
+            worksheet.write(row, col + 24, moex_data["fixed_coupon"])
+            
+
                             
             row += 1            
                 
