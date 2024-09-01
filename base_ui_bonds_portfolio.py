@@ -1,4 +1,3 @@
-
 import wx
 import wx.xrc
 
@@ -89,6 +88,12 @@ class Bonds_portfolio ( wx.Frame ):
 
         self.m_menubar1.Append( self.staticData, u"Static data" )
 
+        self.m_CreditRatings = wx.Menu()
+        self.m_menuItem17 = wx.MenuItem( self.m_CreditRatings, wx.ID_ANY, u"Manage", wx.EmptyString, wx.ITEM_NORMAL )
+        self.m_CreditRatings.Append( self.m_menuItem17 )
+
+        self.m_menubar1.Append( self.m_CreditRatings, u"Credit Ratings" )
+
         self.SetMenuBar( self.m_menubar1 )
 
         fgSizer1 = wx.FlexGridSizer( 0, 2, 0, 0 )
@@ -123,6 +128,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.f_add_bond_static_data, id = self.AddBondStaticData.GetId() )
         self.Bind( wx.EVT_MENU, self.f_load_bond_from_file, id = self.loadBondFromFile.GetId() )
         self.Bind( wx.EVT_MENU, self.f_Add_Entity_Action, id = self.m_menuEntity.GetId() )
+        self.Bind( wx.EVT_MENU, self.OnCreditRatings_Manage, id = self.m_menuItem17.GetId() )
 
     def __del__( self ):
         pass
@@ -175,6 +181,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def f_Add_Entity_Action( self, event ):
+        event.Skip()
+
+    def OnCreditRatings_Manage( self, event ):
         event.Skip()
 
 
@@ -252,6 +261,7 @@ class Portfolio_add_bond ( wx.Frame ):
         self.Centre( wx.BOTH )
 
         # Connect Events
+        self.m_ISIN_input.Bind( wx.EVT_TEXT, self.PortfolioAddBond_ISINEnter )
         self.m_Cancel_button.Bind( wx.EVT_BUTTON, self.f_Cancel_button_pushed )
         self.m_add_to_portfolio.Bind( wx.EVT_BUTTON, self.f_add_to_portfolio )
 
@@ -260,6 +270,9 @@ class Portfolio_add_bond ( wx.Frame ):
 
 
     # Virtual event handlers, override them in your derived class
+    def PortfolioAddBond_ISINEnter( self, event ):
+        event.Skip()
+
     def f_Cancel_button_pushed( self, event ):
         event.Skip()
 
@@ -588,5 +601,155 @@ class Entity ( wx.Frame ):
 
     def f_cancel_entity( self, event ):
         event.Skip()
+
+
+###########################################################################
+## Class CreditRatings
+###########################################################################
+
+class CreditRatings ( wx.Frame ):
+
+    def __init__( self, parent ):
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Credit ratings", pos = wx.DefaultPosition, size = wx.Size( 750,356 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        fgSizer6 = wx.FlexGridSizer( 0, 1, 0, 0 )
+        fgSizer6.AddGrowableCol( 0 )
+        fgSizer6.AddGrowableRow( 1 )
+        fgSizer6.SetFlexibleDirection( wx.BOTH )
+        fgSizer6.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_ALL )
+
+        fgSizer7 = wx.FlexGridSizer( 0, 4, 0, 0 )
+        fgSizer7.AddGrowableCol( 0 )
+        fgSizer7.AddGrowableCol( 1 )
+        fgSizer7.AddGrowableCol( 2 )
+        fgSizer7.AddGrowableCol( 3 )
+        fgSizer7.AddGrowableRow( 0 )
+        fgSizer7.SetFlexibleDirection( wx.BOTH )
+        fgSizer7.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
+
+        self.m_staticText42 = wx.StaticText( self, wx.ID_ANY, u"Select Entity", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_CENTER_HORIZONTAL )
+        self.m_staticText42.Wrap( -1 )
+
+        fgSizer7.Add( self.m_staticText42, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice13Choices = []
+        self.m_choice13 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice13Choices, 0 )
+        self.m_choice13.SetSelection( 0 )
+        fgSizer7.Add( self.m_choice13, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText43 = wx.StaticText( self, wx.ID_ANY, u"Enter ISIN", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_CENTER_HORIZONTAL )
+        self.m_staticText43.Wrap( -1 )
+
+        fgSizer7.Add( self.m_staticText43, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl29 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer7.Add( self.m_textCtrl29, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+        fgSizer6.Add( fgSizer7, 1, wx.ALL|wx.EXPAND, 5 )
+
+        fgSizer8 = wx.FlexGridSizer( 5, 2, 0, 0 )
+        fgSizer8.AddGrowableCol( 0 )
+        fgSizer8.AddGrowableCol( 1 )
+        fgSizer8.AddGrowableRow( 0 )
+        fgSizer8.SetFlexibleDirection( wx.VERTICAL )
+        fgSizer8.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
+
+        self.m_textCtrl33 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer8.Add( self.m_textCtrl33, 0, wx.ALL|wx.EXPAND, 5 )
+
+        fgSizer9 = wx.FlexGridSizer( 0, 2, 0, 0 )
+        fgSizer9.AddGrowableCol( 0 )
+        fgSizer9.AddGrowableCol( 1 )
+        fgSizer9.SetFlexibleDirection( wx.BOTH )
+        fgSizer9.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
+
+        self.m_staticText48 = wx.StaticText( self, wx.ID_ANY, u"Date", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText48.Wrap( -1 )
+
+        fgSizer9.Add( self.m_staticText48, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl37 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer9.Add( self.m_textCtrl37, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText49 = wx.StaticText( self, wx.ID_ANY, u"Rating", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText49.Wrap( -1 )
+
+        fgSizer9.Add( self.m_staticText49, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl38 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer9.Add( self.m_textCtrl38, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText50 = wx.StaticText( self, wx.ID_ANY, u"Rating agency", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText50.Wrap( -1 )
+
+        fgSizer9.Add( self.m_staticText50, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice14Choices = []
+        self.m_choice14 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice14Choices, 0 )
+        self.m_choice14.SetSelection( 0 )
+        fgSizer9.Add( self.m_choice14, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText51 = wx.StaticText( self, wx.ID_ANY, u"Forecast", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText51.Wrap( -1 )
+
+        fgSizer9.Add( self.m_staticText51, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_textCtrl40 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        fgSizer9.Add( self.m_textCtrl40, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+        fgSizer8.Add( fgSizer9, 1, wx.ALL|wx.EXPAND, 5 )
+
+        bSizer12 = wx.BoxSizer( wx.VERTICAL )
+
+        self.m_button11 = wx.Button( self, wx.ID_ANY, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer12.Add( self.m_button11, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5 )
+
+
+        fgSizer8.Add( bSizer12, 1, wx.EXPAND, 5 )
+
+        bSizer13 = wx.BoxSizer( wx.VERTICAL )
+
+        self.m_button13 = wx.Button( self, wx.ID_ANY, u"Create", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer13.Add( self.m_button13, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5 )
+
+
+        fgSizer8.Add( bSizer13, 1, wx.EXPAND, 5 )
+
+
+        fgSizer6.Add( fgSizer8, 1, wx.ALL|wx.EXPAND, 5 )
+
+
+        self.SetSizer( fgSizer6 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+        # Connect Events
+        self.m_choice13.Bind( wx.EVT_CHOICE, self.CreditRating_OnEntity )
+        self.m_textCtrl29.Bind( wx.EVT_TEXT, self.CreditRating_OnISIN )
+        self.m_button11.Bind( wx.EVT_BUTTON, self.CreditRatings_onCancel )
+        self.m_button13.Bind( wx.EVT_BUTTON, self.CreditRating_onCreate )
+
+    def __del__( self ):
+        pass
+
+
+    # Virtual event handlers, override them in your derived class
+    def CreditRating_OnEntity( self, event ):
+        event.Skip()
+
+    def CreditRating_OnISIN( self, event ):
+        event.Skip()
+
+    def CreditRatings_onCancel( self, event ):
+        event.Skip()
+
+    def CreditRating_onCreate( self, event ):
+        event.Skip()
+
 
 

@@ -4,6 +4,7 @@ from base_ui_bonds_portfolio import Portfolio_add_bond
 from base_ui_bonds_portfolio import update_position
 from base_ui_bonds_portfolio import Add_Bond
 from base_ui_bonds_portfolio import Entity
+from base_ui_bonds_portfolio import CreditRatings
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -43,6 +44,40 @@ class CEntity(Entity):
         
     def f_cancel_entity(self, event):
         self.Close()
+        
+class CCreditRatings(CreditRatings):
+    def __init__(self, db_connection):
+        super(CCreditRatings, self).__init__(parent=None)
+        self.connection=db_connection
+        
+        sql_str=f'select short_name, uti from entity order by short_name '
+        cursor = self.connection.cursor()
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()
+        
+        lb_lst=[]
+        for res in tbl:
+            lb_item=f'{res[0]} / {res[1]}'
+            lb_lst.append(lb_item)
+            
+        if len(lb_lst)>0:
+            self.m_choice13.SetItems(lb_lst) 
+            
+        
+    def CreditRatings_onCancel( self, event ):
+        event.Skip()   
+        self.Close()
+        
+    def CreditRating_OnEntity( self, event ):
+        rating_owner=self.m_choice2.GetString(self.m_choice2.GetCurrentSelection())
+        
+        sql_str=f'select count(1) from creadit_ratings where rating_owner like "{rating_owner}" '
+        cursor = self.connection.cursor()
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        print(tbl[0])
+
+        
         
     
 class Add_to_portfolio(Portfolio_add_bond):
@@ -746,7 +781,11 @@ class Bonds_UI(Bonds_portfolio):
         
     def f_Add_Entity_Action( self, event ):
         frame_Entity=CEntity(db_connection=self.connection)
-        frame_Entity.Show()             
+        frame_Entity.Show()   
+        
+    def OnCreditRatings_Manage( self, event ):
+        frame_Credit_ratings=CCreditRatings(db_connection=self.connection)
+        frame_Credit_ratings.Show()         
         
 
 if __name__ == "__main__":
