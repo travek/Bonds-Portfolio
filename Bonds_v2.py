@@ -69,7 +69,7 @@ class CCreditRatings(CreditRatings):
         self.Close()
         
     def CreditRating_OnEntity( self, event ):
-        rating_owner=self.m_choice2.GetString(self.m_choice2.GetCurrentSelection())
+        rating_owner=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
         
         sql_str=f'select count(1) from creadit_ratings where rating_owner like "{rating_owner}" '
         cursor = self.connection.cursor()
@@ -99,6 +99,27 @@ class Add_to_portfolio(Portfolio_add_bond):
             self.connection.commit()        
         
         self.Close()
+        
+    def PortfolioAddBond_ISINEnter( self, event ):
+        isin_=self.m_ISIN_input.GetValue().strip()
+        cursor = self.connection.cursor()
+        sql_str=f'select count(*) from bonds_static where isin like "{isin_}%" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        if tbl is not None and tbl[0]>0:
+            sql_str=f'select tiker from bonds_static where isin like "{isin_}%" '
+            cursor.execute(sql_str)
+            tbl = cursor.fetchone()
+            tiker_=tbl[0]
+            self.m_tiker_input.SetValue(tiker_)
+        event.Skip()
+        
+               
+        
+            
+        
+        
+        
         
     def f_Cancel_button_pushed( self, event ):
         self.Close()
