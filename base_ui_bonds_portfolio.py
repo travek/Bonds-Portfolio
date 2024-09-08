@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+
+###########################################################################
+## Python code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
+## http://www.wxformbuilder.org/
+##
+## PLEASE DO *NOT* EDIT THIS FILE!
+###########################################################################
+
 import wx
 import wx.xrc
 
@@ -657,7 +666,7 @@ class CreditRatings ( wx.Frame ):
         fgSizer8.SetFlexibleDirection( wx.VERTICAL )
         fgSizer8.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
 
-        self.m_textCtrl33 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_textCtrl33 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE )
         fgSizer8.Add( self.m_textCtrl33, 0, wx.ALL|wx.EXPAND, 5 )
 
         fgSizer9 = wx.FlexGridSizer( 0, 2, 0, 0 )
@@ -666,7 +675,17 @@ class CreditRatings ( wx.Frame ):
         fgSizer9.SetFlexibleDirection( wx.BOTH )
         fgSizer9.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
 
-        self.m_staticText48 = wx.StaticText( self, wx.ID_ANY, u"Date", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText34 = wx.StaticText( self, wx.ID_ANY, u"Action", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText34.Wrap( -1 )
+
+        fgSizer9.Add( self.m_staticText34, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice8Choices = []
+        self.m_choice8 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice8Choices, 0 )
+        self.m_choice8.SetSelection( 0 )
+        fgSizer9.Add( self.m_choice8, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText48 = wx.StaticText( self, wx.ID_ANY, u"Date", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText48.Wrap( -1 )
 
         fgSizer9.Add( self.m_staticText48, 0, wx.ALL|wx.EXPAND, 5 )
@@ -674,15 +693,17 @@ class CreditRatings ( wx.Frame ):
         self.m_textCtrl37 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         fgSizer9.Add( self.m_textCtrl37, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_staticText49 = wx.StaticText( self, wx.ID_ANY, u"Rating", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText49 = wx.StaticText( self, wx.ID_ANY, u"Rating", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText49.Wrap( -1 )
 
         fgSizer9.Add( self.m_staticText49, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_textCtrl38 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-        fgSizer9.Add( self.m_textCtrl38, 0, wx.ALL|wx.EXPAND, 5 )
+        m_choice9Choices = []
+        self.m_choice9 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice9Choices, 0 )
+        self.m_choice9.SetSelection( 0 )
+        fgSizer9.Add( self.m_choice9, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_staticText50 = wx.StaticText( self, wx.ID_ANY, u"Rating agency", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText50 = wx.StaticText( self, wx.ID_ANY, u"Rating agency", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText50.Wrap( -1 )
 
         fgSizer9.Add( self.m_staticText50, 0, wx.ALL|wx.EXPAND, 5 )
@@ -692,7 +713,7 @@ class CreditRatings ( wx.Frame ):
         self.m_choice14.SetSelection( 0 )
         fgSizer9.Add( self.m_choice14, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_staticText51 = wx.StaticText( self, wx.ID_ANY, u"Forecast", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText51 = wx.StaticText( self, wx.ID_ANY, u"Forecast", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText51.Wrap( -1 )
 
         fgSizer9.Add( self.m_staticText51, 0, wx.ALL|wx.EXPAND, 5 )
@@ -731,8 +752,9 @@ class CreditRatings ( wx.Frame ):
         # Connect Events
         self.m_choice13.Bind( wx.EVT_CHOICE, self.CreditRating_OnEntity )
         self.m_textCtrl29.Bind( wx.EVT_TEXT, self.CreditRating_OnISIN )
+        self.m_choice8.Bind( wx.EVT_CHOICE, self.onAction_Selected )
         self.m_button11.Bind( wx.EVT_BUTTON, self.CreditRatings_onCancel )
-        self.m_button13.Bind( wx.EVT_BUTTON, self.CreditRating_onCreate )
+        self.m_button13.Bind( wx.EVT_BUTTON, self.CreditRating_onAction )
 
     def __del__( self ):
         pass
@@ -745,11 +767,13 @@ class CreditRatings ( wx.Frame ):
     def CreditRating_OnISIN( self, event ):
         event.Skip()
 
+    def onAction_Selected( self, event ):
+        event.Skip()
+
     def CreditRatings_onCancel( self, event ):
         event.Skip()
 
-    def CreditRating_onCreate( self, event ):
+    def CreditRating_onAction( self, event ):
         event.Skip()
-
 
 
