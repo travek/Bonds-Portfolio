@@ -18,7 +18,7 @@ import plotly.graph_objs as go
 class CEntity(Entity):
     def __init__(self, db_connection):
         super(CEntity, self).__init__(parent=None)
-        self.connection=db_connection                
+        self.connection=db_connection        
                 
     def f_add_entity(self, event):
         uti=self.m_textCtrl17.GetValue().strip()
@@ -49,6 +49,12 @@ class CCreditRatings(CreditRatings):
     def __init__(self, db_connection):
         super(CCreditRatings, self).__init__(parent=None)
         self.connection=db_connection
+        self.m_choice8.SetItems(["Create", "Update", "Delete"])
+        self.m_choice8.SetSelection( 0 )        
+        self.m_choice9.SetItems([ u"Gov", u"AAA", u"AAA-", u"AA+", u"AA", u"AA-", u"A+", u"A", u"A-", u"BBB+", u"BBB", u"BBB-", u"BB+", u"BB", u"BB-", u"B+", u"B", u"B-", u"CCC", u"CC", u"C", u"D" ])
+        self.m_choice9.SetSelection( 0 )
+        self.m_choice14.SetItems(["АО Эксперт РА", "АКРА (АО)", "ООО НРА", "ООО НКР"])
+        
         
         sql_str=f'select short_name, uti from entity order by short_name '
         cursor = self.connection.cursor()
@@ -68,14 +74,62 @@ class CCreditRatings(CreditRatings):
         event.Skip()   
         self.Close()
         
+    def onAction_Selected( self, event ):
+        action=self.m_choice8.GetString(self.m_choice8.GetCurrentSelection())
+        
+        if action=="Create":
+            self.m_button13.Label="Create"
+        elif action=="Update":
+            self.m_button13.Label="Update"
+        elif action=="Delete":
+            self.m_button13.Label="Delete"
+                    
+        
     def CreditRating_OnEntity( self, event ):
         rating_owner=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
+        rating_owner_uti=rating_owner.split('/')[1].strip()
         
-        sql_str=f'select count(1) from creadit_ratings where rating_owner like "{rating_owner}" '
+        sql_str=f'select count(1) from credit_ratings where rating_owner_uti like "{rating_owner_uti}" '
         cursor = self.connection.cursor()
         cursor.execute(sql_str)
         tbl = cursor.fetchone()
-        print(tbl[0])
+        #print(tbl[0])
+        if tbl[0]>0:
+            sql_str=f'select date, rating, rating_issuer_uti, rating_forecast from credit_ratings order by date '
+            cursor.execute(sql_str)
+            tbl = cursor.fetchall()
+            
+            lb_lst=[]
+            for res in tbl:
+                short_name=bonds_functions_db.get_EntityName_by_UTI(cursor, res[2])
+                lb_item=f'{res[0]} / {res[1]} / {short_name} / {res[3]}\n'
+                self.m_textCtrl33.AppendText(lb_item)
+                #lb_lst.append(lb_item)      
+                
+    def CreditRating_onAction( self, event ):       
+        cursor = self.connection.cursor()
+        action=self.m_choice8.GetString(self.m_choice8.GetCurrentSelection())
+        
+        if action=="Create":            
+            rating_owner=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
+            rating_owner_uti=rating_owner.split('/')[1].strip()
+            
+            date=self.m_textCtrl37.GetValue().strip()
+            rating=self.m_choice9.GetString(self.m_choice9.GetCurrentSelection())
+            rating_agency=self.m_choice14.GetString(self.m_choice14.GetCurrentSelection())
+            forecast=self.m_textCtrl40.GetValue().strip()
+            rating_agency_uti=bonds_functions_db.get_EntityUTI_by_Name(self.connection.cursor(), rating_agency)
+            
+            sql_str=f'insert into credit_ratings(date, rating_owner_uti, rating, rating_issuer_uti, rating_forecast) values("{date}", "{rating_owner_uti}", "{rating}", "{rating_agency_uti}", "{forecast}" ) '
+            cursor.execute(sql_str)
+            self.connection.commit()              
+            
+        elif action=="Update":
+            self.m_button13.Label="Update"
+        elif action=="Delete":
+            self.m_button13.Label="Delete"   
+            
+        self.Close()
 
         
         

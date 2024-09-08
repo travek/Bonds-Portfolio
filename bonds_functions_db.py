@@ -26,6 +26,37 @@ def get_bond_maturity(cursor, isin):
     
     return d
 
+def get_EntityUTI_by_Name(cursor, name):
+    
+    sql_str=f'select count(1) from entity WHERE short_name like "{name}" '
+    cursor.execute(sql_str)
+    tbl = cursor.fetchone()
+    #print(tbl[0])
+    if tbl[0]>0:
+        sql_str=f'select ifnull(uti, "not_found") from entity WHERE short_name like "{name}"'
+        cursor.execute(sql_str)
+        uti = cursor.fetchone()[0] 
+        return uti
+    else:
+        return "not_found"
+    
+def get_EntityName_by_UTI(cursor, uti):
+    
+    sql_str=f'select count(1) from entity WHERE uti like "{uti}" '
+    cursor.execute(sql_str)
+    tbl = cursor.fetchone()
+    #print(tbl[0])
+    if tbl[0]>0:
+        sql_str=f'select ifnull(short_name, "not_found") from entity WHERE uti like "{uti}"'
+        cursor.execute(sql_str)
+        short_name = cursor.fetchone()[0] 
+        return short_name
+    else:
+        return "not_found"    
+        
+
+
+
 def get_bond_amortization(cursor, isin):
     amo={}
     d = datetime.datetime.today()
