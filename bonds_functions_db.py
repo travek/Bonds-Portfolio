@@ -54,7 +54,19 @@ def get_EntityName_by_UTI(cursor, uti):
     else:
         return "not_found"    
         
-
+def get_EntityUTI_by_isin(cursor, isin):
+    
+    sql_str=f'select count(1) from bonds_static WHERE isin like "{isin}" '
+    cursor.execute(sql_str)
+    tbl = cursor.fetchone()
+    #print(tbl[0])
+    if tbl[0]>0:
+        sql_str=f'select ifnull(issuer_uti, "not_found") from bonds_static WHERE isin like "{isin}"'
+        cursor.execute(sql_str)
+        uti = cursor.fetchone()[0] 
+        return uti
+    else:
+        return "not_found"
 
 
 def get_bond_amortization(cursor, isin):
@@ -74,21 +86,6 @@ def get_bond_amortization(cursor, isin):
     amo_value = cursor.fetchone()[0]
     
     return {"date":amo_date, "value":amo_value}
-
-def get_bond_rating(cursor, isin):
-    #cursor = connection.cursor()
-    
-    sql_str=f'select rating, ifnull(percent_type,"fixed") as type_ from bonds_static WHERE ISIN like "{isin}"'
-    cursor.execute(sql_str)
-    sql_res = cursor.fetchone()    
-    results={'rating':sql_res[0], 'type': sql_res[1]}
-    
-    sql_str=f'select distinct ifnull(nominal_currency,"RUB") as currency from bonds_schedule where isin like "{isin}"'
-    cursor.execute(sql_str)
-    sql_res = cursor.fetchone()
-    results['currency']=sql_res[0]
-       
-    return results
 
 def get_bond_issuer(cursor, isin):
     #cursor = connection.cursor()
@@ -117,9 +114,23 @@ def update_fcy_rates():
             cross_rates['USD']=float(b[0][2])
             print(cross_rates)    
     
+def get_bond_rating_old(cursor, isin):
+    #cursor = connection.cursor()
+    
+    sql_str=f'select rating, ifnull(percent_type,"fixed") as type_ from bonds_static WHERE ISIN like "{isin}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()    
+    results={'rating':sql_res[0], 'type': sql_res[1]}
+    
+    sql_str=f'select distinct ifnull(nominal_currency,"RUB") as currency from bonds_schedule where isin like "{isin}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    results['currency']=sql_res[0]
+       
+    return results
 
 def get_bond_type_by_rating(cursor, isin):
-    r=get_bond_rating(cursor, isin)
+    r=get_bond_rating_old(cursor, isin)
     rating=r['rating']
     type_=r['type']    
     currency=r['currency']
@@ -748,4 +759,45 @@ def post_market_data(cursor, isin, post_type, post_date, value):
         sql_str=f'insert into market_data(id, id_type, date, price, price_nominal) values ("{isin}", "{post_type}", "{post_date}", {value}, "{price_nominal}")'
         cursor.execute(sql_str)          
         
+
+def get_credit_rating_for_uti(cursor, uti):
+    rating='n/d'
+    sql_str=f'select count(1) from credit_ratings where rating_owner_uti="{uti}" and date=(select max(date) from credit_ratings where rating_owner_uti="{uti}") '
+    cursor.execute(sql_str)
+    tbl = cursor.fetchone()
+    if tbl[0]>0:
+        sql_str=f'select rating from credit_ratings where rating_owner_uti="{uti}" and date=(select max(date) from credit_ratings where rating_owner_uti="{uti}") '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        rating=tbl[0]
+        return rating
+    else:
+        return 'n/d'
     
+def get_credit_rating_for_isin(cursor, isin):
+    rating='n/d'
+    sql_str=f'select count(1) from bonds_static where isin="{isin}" '
+    cursor.execute(sql_str)
+    tbl = cursor.fetchone()
+    if tbl[0]>0:
+        sql_str=f'select rating from bonds_static where isin="{isin}" '
+        cursor.execute(sql_str)
+        tbl = cursor.fetchone()
+        rating=tbl[0]
+        return rating
+    else:
+        return 'n/d'        
+
+def get_bond_rating(cursor, uti, isin):    
+    # uti - uti of bond issuer, isin - isin of bond
+    cr1=get_credit_rating_for_uti(cursor, uti)
+    cr2=get_credit_rating_for_isin(cursor, isin)
+    
+    if cr1!='n/d':
+        return cr1
+    elif cr2!='n/d':
+        return cr2
+    else:
+        return 'n/d'
+       
+    return results    

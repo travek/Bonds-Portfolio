@@ -81,6 +81,28 @@ class CCreditRatings(CreditRatings):
             self.m_button13.Label="Create"
         elif action=="Update":
             self.m_button13.Label="Update"
+            rating_owner=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
+            rating_owner_uti=rating_owner.split('/')[1].strip()
+            
+            sql_str=f'select count(1) from credit_ratings where rating_owner_uti like "{rating_owner_uti}" '
+            cursor = self.connection.cursor()
+            cursor.execute(sql_str)
+            tbl = cursor.fetchone()
+            if tbl[0]>0:
+                selected=self.m_listBox2.GetStringSelection()
+                cursor = self.connection.cursor()
+                selected=selected.split('/')
+                date_=selected[0].strip()
+                rating_=selected[1].strip()
+                rating_agency_=selected[2].strip()
+                forecast_=selected[3].strip()
+                                
+                self.m_textCtrl37.SetValue(date_)
+                self.m_choice9.SetStringSelection(rating_)
+                self.m_choice14.SetStringSelection(rating_agency_)
+                self.m_textCtrl40.SetValue(forecast_)                                                                
+
+            
         elif action=="Delete":
             self.m_button13.Label="Delete"
                     
@@ -95,15 +117,16 @@ class CCreditRatings(CreditRatings):
         tbl = cursor.fetchone()
         #print(tbl[0])
         if tbl[0]>0:
-            sql_str=f'select date, rating, rating_issuer_uti, rating_forecast from credit_ratings order by date '
+            sql_str=f'select date, rating, rating_issuer_uti, rating_forecast from credit_ratings where rating_owner_uti like "{rating_owner_uti}" order by date '
             cursor.execute(sql_str)
             tbl = cursor.fetchall()
             
             lb_lst=[]
             for res in tbl:
                 short_name=bonds_functions_db.get_EntityName_by_UTI(cursor, res[2])
-                lb_item=f'{res[0]} / {res[1]} / {short_name} / {res[3]}\n'
-                self.m_textCtrl33.AppendText(lb_item)
+                lb_lst.append(f'{res[0]} / {res[1]} / {short_name} / {res[3]}\n')
+            
+            self.m_listBox2.InsertItems(lb_lst, 0)
                 #lb_lst.append(lb_item)      
                 
     def CreditRating_onAction( self, event ):       
@@ -126,12 +149,42 @@ class CCreditRatings(CreditRatings):
             
         elif action=="Update":
             self.m_button13.Label="Update"
+            
+            rating_owner=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
+            rating_owner_uti=rating_owner.split('/')[1].strip()
+            
+            sql_str=f'select count(1) from credit_ratings where rating_owner_uti like "{rating_owner_uti}" '
+            cursor = self.connection.cursor()
+            cursor.execute(sql_str)
+            tbl = cursor.fetchone()
+            if tbl[0]>0:
+                selected=self.m_listBox2.GetStringSelection()
+                cursor = self.connection.cursor()
+                selected=selected.split('/')
+                date_=selected[0].strip()
+                rating_=selected[1].strip()
+                rating_agency_=selected[2].strip()
+                forecast_=selected[3].strip()
+                rating_agency_uti_=bonds_functions_db.get_EntityUTI_by_Name(self.connection.cursor(), rating_agency_)
+                            
+                new_date_=self.m_textCtrl37.GetValue().strip()
+                new_rating_=self.m_choice9.GetString(self.m_choice9.GetCurrentSelection())
+                new_rating_agency=self.m_choice14.GetString(self.m_choice14.GetCurrentSelection())
+                new_rating_agency_uti=bonds_functions_db.get_EntityUTI_by_Name(self.connection.cursor(), new_rating_agency)                 
+                new_forecast_=self.m_textCtrl40.GetValue().strip()                          
+                
+                sql_str_delete=f'delete from credit_ratings where date="{date_}" and rating_owner_uti="{rating_owner_uti}" and rating_issuer_uti="{rating_agency_uti_}"  '
+                sql_str_insert=f'insert into credit_ratings(date, rating_owner_uti, rating, rating_issuer_uti, rating_forecast) values("{new_date_}", "{rating_owner_uti}", "{new_rating_}", "{new_rating_agency_uti}", "{new_forecast_}") '
+                cursor.execute(sql_str_delete)
+                self.connection.commit()  
+                cursor.execute(sql_str_insert)
+                self.connection.commit()  
+            
+                
         elif action=="Delete":
             self.m_button13.Label="Delete"   
             
-        self.Close()
-
-        
+        self.Close()        
         
     
 class Add_to_portfolio(Portfolio_add_bond):
@@ -401,7 +454,7 @@ class Bonds_UI(Bonds_portfolio):
             cnt = cursor.fetchone()[0]
             
             print(f'There are {cnt} posions in portfolio')
-          
+        
 
     def f_print_portfolio_excel( self, event ):
         event.Skip()
@@ -458,24 +511,25 @@ class Bonds_UI(Bonds_portfolio):
         row = 1
         col = 0          
         for item in tbl:
-            moex_data=bonds_functions_db.get_bond_info_moex(item[0])
-            bond_rating=bonds_functions_db.get_bond_rating(self.connection.cursor(), item[0])
+            isin=item[0]
+            moex_data=bonds_functions_db.get_bond_info_moex(isin)
+            bond_rating=bonds_functions_db.get_bond_rating(self.connection.cursor(), bonds_functions_db.get_EntityUTI_by_isin(cursor, isin), isin)
             worksheet.write(row, col,     item[2])
-            worksheet.write(row, col + 1, item[0])
+            worksheet.write(row, col + 1, isin)
             worksheet.write(row, col + 2, item[1])
-            worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), item[0]), date_format)
-            worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), item[0]), date_format)
-            worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), item[0]))
+            worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), isin), date_format)
+            worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), isin), date_format)
+            worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), isin))
             #worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
             worksheet.write(row, col + 6, moex_data["nominal"])
-            worksheet.write(row, col + 7, bond_rating['rating'])     
+            worksheet.write(row, col + 7, bond_rating)     
             worksheet.write(row, col + 8, moex_data["yield"] )
 
             worksheet.write(row, col + 9, item[1]*moex_data["full_price"])
                         
             worksheet.write(row, col + 10, moex_data["duration"] )        
             worksheet.write(row, col + 11, moex_data["duration"]/365 )
-            worksheet.write(row, col + 12, bonds_functions_db.get_bond_type_by_rating(self.connection.cursor(), item[0]) )
+            worksheet.write(row, col + 12, bonds_functions_db.get_bond_type_by_rating(self.connection.cursor(), isin) )
             worksheet.write(row, col + 13, moex_data["last_price"])
             try:
                 worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
@@ -484,10 +538,10 @@ class Bonds_UI(Bonds_portfolio):
             worksheet.write(row, col + 15, moex_data["coupon_period"])
             worksheet.write(row, col + 16, item[5])
             
-            issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), item[0])
+            issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
             worksheet.write(row, col + 17, issuer["issuer_short_name"])              
 
-            amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), item[0])
+            amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), isin)
             if amo_value.get("date")!='':
                 d = datetime.datetime.strptime(amo_value.get("date", None), '%Y%m%d')
                 worksheet.write_datetime(row, col + 18, d, date_format)            
