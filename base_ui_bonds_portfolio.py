@@ -666,8 +666,9 @@ class CreditRatings ( wx.Frame ):
         fgSizer8.SetFlexibleDirection( wx.VERTICAL )
         fgSizer8.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
 
-        self.m_textCtrl33 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE )
-        fgSizer8.Add( self.m_textCtrl33, 0, wx.ALL|wx.EXPAND, 5 )
+        m_listBox2Choices = []
+        self.m_listBox2 = wx.ListBox( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBox2Choices, 0 )
+        fgSizer8.Add( self.m_listBox2, 0, wx.ALL|wx.EXPAND, 5 )
 
         fgSizer9 = wx.FlexGridSizer( 0, 2, 0, 0 )
         fgSizer9.AddGrowableCol( 0 )
