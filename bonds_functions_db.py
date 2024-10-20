@@ -13,7 +13,7 @@ import sqlite3
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':91.6}
+cross_rates={'USD':95}
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
@@ -139,14 +139,14 @@ def get_bond_type_by_rating(cursor, isin):
     
     if num == 27:
         return 'Gov'
-    elif num<=26 and num>=16:
+    elif num<=26 and num>16:
         if type_=='float':
             return 'Corp-fl'
         elif currency!="RUB":
             return f'Corp-{currency}'
         else:
             return 'Corp'
-    elif num<=15 and num>=0:
+    elif num<=16 and num>=0:
         if type_=='float':
             return 'VDO-fl'    
         else:
@@ -182,6 +182,13 @@ def get_bond_nearest_coupon(cursor, isin):
         return 0
     return val[0]
 
+def get_instrument_type(cursor, isin):
+    sql_str=f'select instrument_type from trading_instruments where isin like "{isin}"  '
+    cursor.execute(sql_str)
+    val = cursor.fetchone()
+    if val is None:
+        return 0
+    return val[0]    
 
 
 def get_bond_info_moex(isin):
@@ -286,6 +293,59 @@ def get_bond_info_moex(isin):
 
     return bond_info
 
+
+def get_equity_info_moex(isin):
+    secid=""
+    shortname=""
+    inn=""
+    req_str='https://iss.moex.com/iss/securities.json?q='+isin+"'"
+    j=requests.get(req_str).json() #Получить инструмент по isin коду  #'https://iss.moex.com/iss/securities.json?q=RU000A105XV1'
+    if len(j['securities']['data'])<1:
+        print('Security ID for ',isin,' isnt found on MOEX API!')
+        return {}
+    
+    for f, b in zip(j['securities']['columns'], j['securities']['data'][0]):
+        if f=="secid":
+            secid=b
+        if f=="shortname":
+            shortname=b
+        if f=="emitent_inn":
+            inn=b
+                
+    req_str='https://iss.moex.com/iss/engines/stock/markets/shares/securities/'+secid+'.json?marketprice_board=1'
+    nkd=0
+    nominal=0
+    last_price=0
+    fixed_coupon=0
+    j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
+    
+    last_price=0
+    for f, b in zip(j['marketdata']['columns'], j['marketdata']['data'][0]):
+        if f=="LAST":
+            if b is not None:
+                last_price=b
+    
+    market_price=0
+    for f, b in zip(j['marketdata']['columns'], j['marketdata']['data'][0]):
+        if f=="MARKETPRICE":
+            if b is not None:
+                market_price=b
+    
+    if last_price==0 and market_price>0:
+        last_price=market_price                  
+                            
+    eq_info={}
+    eq_info["isin"]=isin
+    eq_info["secid"]=secid
+    eq_info["shortname"]=shortname
+    eq_info["last_price"]=last_price
+    eq_info["emitent_inn"]=inn
+    full_price=last_price
+    eq_info["full_price"]=full_price
+
+    return eq_info
+
+
 def calc_portfolio_pct_days(days=365):
     # calculate payments pcts in portfolio betwen current date and DAYS 
     accrual_pct=0
@@ -310,28 +370,40 @@ def calc_portfolio_pct_days(days=365):
     return accrual_pct
 
 
-def calc_bond_portfolio_value(cursor):
+def calc_portfolio_value(cursor):
     total_val=0
     d = datetime.datetime.today()
     today_str=d.strftime("%Y%m%d")
     
-    sql_str=f'SELECT isin, qty, portfolio_id FROM bond_portfolio bp WHERE qty>0 and exists (select * from bonds_schedule bs where bs.isin=bp.isin and bs.date>"{today_str}") '
+    sql_str=f'SELECT isin, qty, portfolio_id FROM portfolio bp WHERE qty>0 '    
     cursor.execute(sql_str)
     tbl = cursor.fetchall()
     
     portfolios={}
         
     for item in tbl:
-        data=get_bond_info_moex(item[0])
+        sql_str=f'SELECT instrument_type FROM trading_instruments ti WHERE ti.isin="{item[0]}" '
+        cursor.execute(sql_str)
+        instrument_type=cursor.fetchone()[0]
+        
+        if instrument_type=='bond':
+            data=get_bond_info_moex(item[0])
+        elif instrument_type=='equity':
+            data=get_equity_info_moex(item[0])
+        elif instrument_type=='etf':
+            data=get_equity_info_moex(item[0])
+            
         portfolios[item[2]]=portfolios.get(item[2],0)+data["full_price"]*item[1]
         total_val=total_val+data["full_price"]*item[1]
+
         #save price to DB
-        post_market_data(cursor, item[0], "bond_price", today_str, data["last_price"])
-        sql_str=f'SELECT isin, ifnull(percent_type, "fixed") FROM bonds_static WHERE isin="{item[0]}" '
-        cursor.execute(sql_str)
-        pct_type = cursor.fetchone()[1]
-        if pct_type=="linker":
-            post_market_data(cursor, item[0], "bond_nominal", today_str, data["nominal"])
+        post_market_data(cursor, item[0], f'{instrument_type}_price', today_str, data["last_price"])
+        if instrument_type=='bond':
+            sql_str=f'SELECT isin, ifnull(percent_type, "fixed") FROM bonds_static WHERE isin="{item[0]}" '
+            cursor.execute(sql_str)
+            pct_type = cursor.fetchone()[1]
+            if pct_type=="linker":
+                post_market_data(cursor, item[0], "bond_nominal", today_str, data["nominal"])
         
         
     sql_str=f'select count(price) from market_data where id="my_portfolio" and date="{today_str}"'
@@ -580,66 +652,6 @@ def calc_full_fair_value(quontity, moex_data):
     return fv
 
 
-def print_portfolio_excel():
-
-    # Create a workbook and add a worksheet.
-    workbook = xlsxwriter.Workbook('my_portfolio.xlsx')
-    worksheet = workbook.add_worksheet()
-    # Add a bold format to use to highlight cells.
-    bold = workbook.add_format({'bold': True})
-    date_format = workbook.add_format({'num_format': 'dd/mm/yy'})
-    
-    # Write some data headers.
-    worksheet.write('A1', 'Ticker', bold)
-    worksheet.write('B1', 'Isin', bold)
-    worksheet.write('C1', 'Quantity', bold)
-    worksheet.write('D1', 'Maturity', bold)
-    worksheet.write('E1', 'Next coupon date', bold)
-    worksheet.write('F1', 'Next coupon', bold)
-    worksheet.write('G1', 'Current nominal', bold)
-    worksheet.write('H1', 'Rating', bold)
-    worksheet.write('I1', 'Yield', bold)
-    worksheet.write('J1', 'Fair value', bold)
-    worksheet.write('K1', 'Duration', bold)
-    worksheet.write('L1', 'Duration_years', bold)
-    worksheet.write('M1', 'Bond_Type', bold)
-    worksheet.write('N1', 'Last_Price', bold)
-    worksheet.write('O1', 'Coupon_yield', bold)
-    worksheet.write('P1', 'Coupon_period', bold)
-    worksheet.write('Q1', 'Issue_size', bold)
-     
-    # Start from the first cell below the headers.
-    row = 1
-    col = 0    
-    for i in portfolio_ext:
-        moex_data=get_bond_info_moex(portfolio_ext[i]["isin"])
-        
-        worksheet.write(row, col,     portfolio_ext[i]["moex_code"])
-        worksheet.write(row, col + 1, portfolio_ext[i]["isin"])
-        worksheet.write(row, col + 2, portfolio_ext[i]["count"])
-        worksheet.write_datetime(row, col + 3, get_bond_maturity(portfolio_ext[i]["isin"]), date_format)
-        worksheet.write_datetime(row, col + 4, get_bond_nearest_coupon_date(portfolio_ext[i]["isin"]), date_format)
-        worksheet.write(row, col + 5, portfolio_ext[i]["count"]*get_bond_nearest_coupon(portfolio_ext[i]["isin"]))
-        worksheet.write(row, col + 6, get_current_bond_nominal(portfolio_ext[i]["isin"]) )
-        worksheet.write(row, col + 7, portfolio_ext[i].get("rating") )        
-        worksheet.write(row, col + 8, moex_data["yield"] )
-        fullFV=calc_full_fair_value(portfolio_ext[i]["count"], moex_data)
-        #worksheet.write(row, col + 9, portfolio_ext[i]["count"]*moex_data["full_price"] )
-        worksheet.write(row, col + 9, fullFV)
-        
-        worksheet.write(row, col + 10, moex_data["duration"] )        
-        worksheet.write(row, col + 11, moex_data["duration"]/365 )
-        worksheet.write(row, col + 12, get_bond_type_by_rating(ratings, portfolio_ext[i].get("rating")) )
-        worksheet.write(row, col + 13, moex_data["last_price"])
-        worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
-        worksheet.write(row, col + 15, moex_data["coupon_period"])
-        worksheet.write(row, col + 16, moex_data["issue_size"])
-                        
-        row += 1
-
-    # Write a total using a formula.
-    workbook.close()
-    
 
 def read_bond_from_txt(cursor, fname):
     
@@ -749,6 +761,8 @@ def post_market_data(cursor, isin, post_type, post_date, value):
     price_nominal="pct"
     if post_type=="bond_nominal":
         price_nominal="RUB"
+    if post_type=="etf_price":
+        price_nominal="RUB"        
         
     if cursor.rowcount==-1:
         sql_str=f'insert into market_data(id, id_type, date, price, price_nominal) values ("{isin}", "{post_type}", "{post_date}", {value}, "{price_nominal}")'

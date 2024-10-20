@@ -86,7 +86,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.m_menubar1.Append( self.portfolio, u"Portfolio" )
 
         self.staticData = wx.Menu()
-        self.AddBondStaticData = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add Bond static data", wx.EmptyString, wx.ITEM_NORMAL )
+        self.AddBondStaticData = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add instrument", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.AddBondStaticData )
 
         self.loadBondFromFile = wx.MenuItem( self.staticData, ID_LOAD_BOND_FROM_FILE, u"Load bond from file", wx.EmptyString, wx.ITEM_NORMAL )
@@ -393,19 +393,19 @@ class update_position ( wx.Frame ):
 
 
 ###########################################################################
-## Class Add_Bond
+## Class Add_Instrument
 ###########################################################################
 
-class Add_Bond ( wx.Frame ):
+class Add_Instrument ( wx.Frame ):
 
     def __init__( self, parent ):
-        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Bond form", pos = wx.DefaultPosition, size = wx.Size( 609,464 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Bond form", pos = wx.DefaultPosition, size = wx.Size( 698,561 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
         self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
         gSizer2 = wx.GridSizer( 0, 2, 0, 0 )
 
-        self.m_staticText12 = wx.StaticText( self, wx.ID_ANY, u"Bond ISIN", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText12 = wx.StaticText( self, wx.ID_ANY, u"Instrument ISIN", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText12.Wrap( -1 )
 
         gSizer2.Add( self.m_staticText12, 0, wx.ALL|wx.EXPAND, 5 )
@@ -413,7 +413,27 @@ class Add_Bond ( wx.Frame ):
         self.m_textCtrl11 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer2.Add( self.m_textCtrl11, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_staticText13 = wx.StaticText( self, wx.ID_ANY, u"Bond tiker", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText35 = wx.StaticText( self, wx.ID_ANY, u"Instrument type", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText35.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText35, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice10Choices = [ u"bond", u"equity", u"etf" ]
+        self.m_choice10 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice10Choices, 0 )
+        self.m_choice10.SetSelection( 0 )
+        gSizer2.Add( self.m_choice10, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText36 = wx.StaticText( self, wx.ID_ANY, u"Trading place", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText36.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText36, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice11Choices = [ u"MOEX" ]
+        self.m_choice11 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice11Choices, 0 )
+        self.m_choice11.SetSelection( 0 )
+        gSizer2.Add( self.m_choice11, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText13 = wx.StaticText( self, wx.ID_ANY, u"Tiker", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText13.Wrap( -1 )
 
         gSizer2.Add( self.m_staticText13, 0, wx.ALL|wx.EXPAND, 5 )
@@ -491,7 +511,7 @@ class Add_Bond ( wx.Frame ):
         self.m_choice2.SetSelection( 0 )
         gSizer2.Add( self.m_choice2, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_staticText20 = wx.StaticText( self, wx.ID_ANY, u"Bond issuer", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText20 = wx.StaticText( self, wx.ID_ANY, u"Instrument issuer", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText20.Wrap( -1 )
 
         gSizer2.Add( self.m_staticText20, 0, wx.ALL|wx.EXPAND, 5 )
@@ -501,7 +521,7 @@ class Add_Bond ( wx.Frame ):
         self.m_choice3.SetSelection( 0 )
         gSizer2.Add( self.m_choice3, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.m_button5 = wx.Button( self, wx.ID_ANY, u"Add bond", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_button5 = wx.Button( self, wx.ID_ANY, u"Add instrument", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer2.Add( self.m_button5, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
         self.m_button6 = wx.Button( self, wx.ID_ANY, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 )
@@ -514,7 +534,7 @@ class Add_Bond ( wx.Frame ):
         self.Centre( wx.BOTH )
 
         # Connect Events
-        self.m_button5.Bind( wx.EVT_BUTTON, self.Add_bond_add )
+        self.m_button5.Bind( wx.EVT_BUTTON, self.fAdd_instrument )
         self.m_button6.Bind( wx.EVT_BUTTON, self.Add_bond_cancel )
 
     def __del__( self ):
@@ -522,7 +542,7 @@ class Add_Bond ( wx.Frame ):
 
 
     # Virtual event handlers, override them in your derived class
-    def Add_bond_add( self, event ):
+    def fAdd_instrument( self, event ):
         event.Skip()
 
     def Add_bond_cancel( self, event ):
