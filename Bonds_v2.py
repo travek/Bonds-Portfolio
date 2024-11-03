@@ -201,9 +201,13 @@ class Add_to_portfolio(Portfolio_add_bond):
         cursor = self.connection.cursor()
         
         if len(isin_)>5 and qty_>0 and len(portfolio_id)>1: # len(tiker_)>0 and
-            sql_str=f'insert into portfolio(isin, qty, short_name, portfolio_id) values("{isin_}", {qty_}, "{tiker_}", "{portfolio_id}")'
+            sql_str=f'select count(*) from portfolio where isin like "{isin_}%" and portfolio_id="{portfolio_id}"'
             cursor.execute(sql_str)
-            self.connection.commit()        
+            tbl = cursor.fetchone()
+            if tbl is not None and tbl[0]>0:                
+                sql_str=f'insert into portfolio(isin, qty, short_name, portfolio_id) values("{isin_}", {qty_}, "{tiker_}", "{portfolio_id}")'
+                cursor.execute(sql_str)
+                self.connection.commit()        
         
         self.Close()
         
@@ -258,17 +262,22 @@ class my_Add_Instrument(Add_Instrument):
         calls=self.m_textCtrl15.GetValue().strip()
         puts=self.m_textCtrl16.GetValue().strip()
         credit_rating=self.m_choice2.GetString(self.m_choice2.GetCurrentSelection())
+        instrument_currency=self.m_choice12.GetString(self.m_choice12.GetCurrentSelection())
         if coupon_type=="fixed":
             percent_base=""
         else:
             percent_base=f'{coupon_base}+{coupon_addon}'
         
+        le=""
         cs=self.m_choice3.GetCurrentSelection()
         if cs>=0:            
             le=self.m_choice3.GetString(cs)
-        else:
+        elif inst_type!="cash":
             wx.MessageBox("Legal entity not selected","Error",wx.OK)            
             return
+        
+        if inst_type=="cash":
+            isin_=inst_type+"-"+instrument_currency+"-"+trading_place
             
         if len(le)>5:
             le_details=le.split('/')
@@ -282,10 +291,13 @@ class my_Add_Instrument(Add_Instrument):
         sql_str=f'select count(*) from bonds_static where isin="{isin_}" '
         cursor.execute(sql_str)
         tbl = cursor.fetchone()
+        sql_str=f'select count(*) from trading_instruments where isin="{isin_}" '
+        cursor.execute(sql_str)
+        tbl2 = cursor.fetchone()        
         
-        if tbl[0]>0:
+        if tbl[0]>0 or tbl2[0]>0:
             print(f'Bond {isin_} already in DB')
-        elif len(li_uti)<5:
+        elif len(li_uti)<5 and inst_type!="cash":
             print(f'Legal entity is NOT selected!!!')
         else:
             if inst_type=="bond":
@@ -293,21 +305,28 @@ class my_Add_Instrument(Add_Instrument):
                 print(sql_str)
                 cursor.execute(sql_str)
                 print(sql_str)
-                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}" )'
+                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code, instrument_currency) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}",  "{instrument_currency}" )'
                 print(sql_str)
                 cursor.execute(sql_str)            
                 self.connection.commit() 
                 self.Close()
                 
             if inst_type=="equity":
-                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}" )'
+                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code, instrument_currency) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}",  "{instrument_currency}" )'
                 print(sql_str)
                 cursor.execute(sql_str)            
                 self.connection.commit() 
                 self.Close()  
                 
             if inst_type=="etf":
-                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}" )'
+                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code, instrument_currency) values ("{isin_}",  "{inst_type}",  "{trading_place}", "{tiker_}",  "{instrument_currency}" )'
+                print(sql_str)
+                cursor.execute(sql_str)            
+                self.connection.commit() 
+                self.Close()     
+
+            if inst_type=="cash":
+                sql_str=f'insert into trading_instruments(isin, instrument_type, trading_place, trading_code, instrument_currency) values ("{isin_}",  "{inst_type}",  "{trading_place}", "cash",  "{instrument_currency}")'
                 print(sql_str)
                 cursor.execute(sql_str)            
                 self.connection.commit() 
@@ -334,10 +353,10 @@ class Upd_Position(update_position):
         cursor = self.connection.cursor()
         isin_template=self.m_textCtrl6.GetValue()
         
-        sql_str=f'select bp.ISIN, bp.short_name, bp.portfolio_id from portfolio bp join bonds_static bs on bs.isin=bp.isin where (bp.isin like "{isin_template}%" or bs.tiker like "{isin_template}%") and (bs.maturity_date>"{today_str}" or bs.maturity_date is null)'
+        sql_str=f'select bp.ISIN, bp.short_name, bp.portfolio_id from portfolio bp left join bonds_static bs on bs.isin=bp.isin left join trading_instruments ti on ti.isin=bp.isin where (bp.isin like "{isin_template}%" or bs.tiker like "{isin_template}%" or ti.trading_code like "{isin_template}%") and (bs.maturity_date>"{today_str}" or bs.maturity_date is null)'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
-        
+                
         lb_lst=[]
         for res in tbl:
             lb_item=f'{res[0]} / {res[1]} / {res[2]}'
@@ -523,7 +542,7 @@ class Portfolio_UI(Bonds_portfolio):
         worksheet.write('J1', 'Fair value', bold)
         worksheet.write('K1', 'Duration', bold)
         worksheet.write('L1', 'Duration_years', bold)
-        worksheet.write('M1', 'Bond_Type', bold)
+        worksheet.write('M1', 'Instrument_type', bold)
         worksheet.write('N1', 'Last_Price', bold)
         worksheet.write('O1', 'Coupon_yield', bold)
         worksheet.write('P1', 'Coupon_period', bold)
@@ -543,7 +562,7 @@ class Portfolio_UI(Bonds_portfolio):
         
                 
         #sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
-        sql_str=f'select bp.isin FROM portfolio bp WHERE 1=1 and qty>0'
+        sql_str=f'select bp.isin, bp.qty, bp.portfolio_id FROM portfolio bp WHERE 1=1 and qty>0'
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         
@@ -553,35 +572,37 @@ class Portfolio_UI(Bonds_portfolio):
             isin=item[0]
             instr_type=bonds_functions_db.get_instrument_type(self.connection.cursor(), item[0])
             if instr_type=='bond':
-                sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
-                cursor.execute(sql_str)
-                result=cursor.fetchone()
+                bond=bonds_functions_db.get_bond_static_data(self.connection.cursor(),isin)
+                
+                #sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
+                #cursor.execute(sql_str)
+                #result=cursor.fetchone()
                 
                 moex_data=bonds_functions_db.get_bond_info_moex(isin)
                 bond_rating=bonds_functions_db.get_bond_rating(self.connection.cursor(), bonds_functions_db.get_EntityUTI_by_isin(cursor, isin), isin)
-                worksheet.write(row, col,     result[2])
+                worksheet.write(row, col,     bond["tiker"])
                 worksheet.write(row, col + 1, isin)
-                worksheet.write(row, col + 2, result[1])
+                worksheet.write(row, col + 2, item[1])
                 worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), isin), date_format)
                 worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), isin), date_format)
-                worksheet.write(row, col + 5, result[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), isin))
+                worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), isin))
                 #worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
                 worksheet.write(row, col + 6, moex_data["nominal"])
                 worksheet.write(row, col + 7, bond_rating)     
                 worksheet.write(row, col + 8, moex_data["yield"] )
     
-                worksheet.write(row, col + 9, result[1]*moex_data["full_price"])
+                worksheet.write(row, col + 9, item[1]*moex_data["full_price"])
                             
                 worksheet.write(row, col + 10, moex_data["duration"] )        
                 worksheet.write(row, col + 11, moex_data["duration"]/365 )
-                worksheet.write(row, col + 12, bonds_functions_db.get_bond_type_by_rating(self.connection.cursor(), isin) )
+                worksheet.write(row, col + 12, bonds_functions_db.get_instrument_type_extended(self.connection.cursor(), isin) )
                 worksheet.write(row, col + 13, moex_data["last_price"])
                 try:
                     worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
                 except ZeroDivisionError:
                         worksheet.write(row, col + 14, moex_data["current_coupon"])
                 worksheet.write(row, col + 15, moex_data["coupon_period"])
-                worksheet.write(row, col + 16, result[5])
+                worksheet.write(row, col + 16, item[2])
                 
                 issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
                 worksheet.write(row, col + 17, issuer["issuer_short_name"])              
@@ -592,11 +613,11 @@ class Portfolio_UI(Bonds_portfolio):
                     worksheet.write_datetime(row, col + 18, d, date_format)            
                     worksheet.write(row, col + 19, amo_value.get("value"))
                 
-                worksheet.write(row, col + 20, result[3])
-                worksheet.write(row, col + 21, result[4]) 
+                worksheet.write(row, col + 20, bond["percent_type"])
+                worksheet.write(row, col + 21, bond["percent_base"]) 
                 
-                worksheet.write(row, col + 22, result[6])  
-                worksheet.write(row, col + 23, result[7])
+                worksheet.write(row, col + 22, bond["call_opt_date"])  
+                worksheet.write(row, col + 23, bond["put_opt_dates"])
                 
                 worksheet.write(row, col + 24, moex_data["fixed_coupon"])
                 
@@ -606,22 +627,25 @@ class Portfolio_UI(Bonds_portfolio):
                 if instr_type=='etf':
                     moex_data=bonds_functions_db.get_equity_info_moex( isin)
                     
-                sql_str=f'SELECT bp.isin, qty, trading_code, 0, 0, portfolio_id, 0, 0 FROM portfolio bp join trading_instruments ti on ti.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
+                #sql_str=f'SELECT bp.isin, qty, trading_code, 0, 0, portfolio_id, 0, 0 FROM portfolio bp join trading_instruments ti on ti.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
+                #cursor.execute(sql_str)
+                #result=cursor.fetchone()    
+                sql_str=f'SELECT trading_code FROM trading_instruments ti WHERE 1=1 and isin="{isin}"'
                 cursor.execute(sql_str)
-                result=cursor.fetchone()                                        
+                result=cursor.fetchone()                
                 
-                worksheet.write(row, col,     result[2])
+                worksheet.write(row, col,     result[0])
                 worksheet.write(row, col + 1, isin)
-                worksheet.write(row, col + 2, result[1])
+                worksheet.write(row, col + 2, item[1])
                 #worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), isin), date_format)
                 #worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), isin), date_format)
-                worksheet.write(row, col + 5, result[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), isin))
+                #worksheet.write(row, col + 5, item[1]*bonds_functions_db.get_bond_nearest_coupon(self.connection.cursor(), isin))
                 #worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
                 #worksheet.write(row, col + 6, moex_data["nominal"])
                 #worksheet.write(row, col + 7, bond_rating)     
                 #worksheet.write(row, col + 8, moex_data["yield"] )
     
-                worksheet.write(row, col + 9, result[1]*moex_data["full_price"])
+                worksheet.write(row, col + 9, item[1]*moex_data["full_price"])
                             
                 #worksheet.write(row, col + 10, moex_data["duration"] )        
                 #worksheet.write(row, col + 11, moex_data["duration"]/365 )
@@ -632,7 +656,7 @@ class Portfolio_UI(Bonds_portfolio):
                 #except ZeroDivisionError:
                         #worksheet.write(row, col + 14, moex_data["current_coupon"])
                 #worksheet.write(row, col + 15, moex_data["coupon_period"])
-                worksheet.write(row, col + 16, result[5])
+                worksheet.write(row, col + 16, item[2])
                 
                 #issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
                 #worksheet.write(row, col + 17, issuer["issuer_short_name"])              
@@ -650,7 +674,58 @@ class Portfolio_UI(Bonds_portfolio):
                 #worksheet.write(row, col + 23, item[7])
                 
                 #worksheet.write(row, col + 24, moex_data["fixed_coupon"])                
+
+            if instr_type in ['cash']:
+                #if instr_type=='equity':
+                    #moex_data=bonds_functions_db.get_equity_info_moex( isin)
+                #if instr_type=='etf':
+                    #moex_data=bonds_functions_db.get_equity_info_moex( isin)
+                    
+                #sql_str=f'SELECT bp.isin, qty, instrument_currency, 0, 0, portfolio_id, 0, 0 FROM portfolio bp join trading_instruments ti on ti.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
+                #sql_str=f'SELECT bp.isin, qty, instrument_currency, 0, 0, portfolio_id, 0, 0 FROM portfolio bp join trading_instruments ti on ti.isin=bp.isin WHERE 1=1 and qty>0 and bp.isin="{isin}"'
+                #cursor.execute(sql_str)
+                #result=cursor.fetchone()                                        
                 
+                worksheet.write(row, col,     item[0])
+                worksheet.write(row, col + 1, isin)
+                worksheet.write(row, col + 2, item[1])
+                #worksheet.write_datetime(row, col + 3, bonds_functions_db.get_bond_maturity(self.connection.cursor(), isin), date_format)
+                #worksheet.write_datetime(row, col + 4, bonds_functions_db.get_bond_nearest_coupon_date(self.connection.cursor(), isin), date_format)
+                worksheet.write(row, col + 5, item[1])
+                #worksheet.write(row, col + 6, bonds_functions_db.get_current_bond_nominal(self.connection.cursor(), item[0]) )
+                #worksheet.write(row, col + 6, moex_data["nominal"])
+                #worksheet.write(row, col + 7, bond_rating)     
+                #worksheet.write(row, col + 8, moex_data["yield"] )
+    
+                worksheet.write(row, col + 9, item[1])
+                            
+                #worksheet.write(row, col + 10, moex_data["duration"] )        
+                #worksheet.write(row, col + 11, moex_data["duration"]/365 )
+                worksheet.write(row, col + 12, instr_type )
+                worksheet.write(row, col + 13, 1)
+                #try:
+                    #worksheet.write(row, col + 14, moex_data["current_coupon"]/moex_data["last_price"])
+                #except ZeroDivisionError:
+                        #worksheet.write(row, col + 14, moex_data["current_coupon"])
+                #worksheet.write(row, col + 15, moex_data["coupon_period"])
+                worksheet.write(row, col + 16, item[2])
+                
+                #issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
+                #worksheet.write(row, col + 17, issuer["issuer_short_name"])              
+    
+                #amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), isin)
+                #if amo_value.get("date")!='':
+                    #d = datetime.datetime.strptime(amo_value.get("date", None), '%Y%m%d')
+                    #worksheet.write_datetime(row, col + 18, d, date_format)            
+                    #worksheet.write(row, col + 19, amo_value.get("value"))
+                
+                #worksheet.write(row, col + 20, item[3])
+                #worksheet.write(row, col + 21, item[4]) 
+                
+                #worksheet.write(row, col + 22, item[6])  
+                #worksheet.write(row, col + 23, item[7])
+                
+                #worksheet.write(row, col + 24, moex_data["fixed_coupon"])                                
             
                             
             row += 1            

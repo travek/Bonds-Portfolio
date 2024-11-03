@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-
-###########################################################################
-## Python code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
-## http://www.wxformbuilder.org/
-##
-## PLEASE DO *NOT* EDIT THIS FILE!
-###########################################################################
 
 import wx
 import wx.xrc
@@ -418,7 +410,7 @@ class Add_Instrument ( wx.Frame ):
 
         gSizer2.Add( self.m_staticText35, 0, wx.ALL|wx.EXPAND, 5 )
 
-        m_choice10Choices = [ u"bond", u"equity", u"etf" ]
+        m_choice10Choices = [ u"bond", u"equity", u"etf", u"cash" ]
         self.m_choice10 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice10Choices, 0 )
         self.m_choice10.SetSelection( 0 )
         gSizer2.Add( self.m_choice10, 0, wx.ALL|wx.EXPAND, 5 )
@@ -440,6 +432,16 @@ class Add_Instrument ( wx.Frame ):
 
         self.m_textCtrl12 = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer2.Add( self.m_textCtrl12, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_staticText37 = wx.StaticText( self, wx.ID_ANY, u"Instrument currency", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+        self.m_staticText37.Wrap( -1 )
+
+        gSizer2.Add( self.m_staticText37, 0, wx.ALL|wx.EXPAND, 5 )
+
+        m_choice12Choices = [ u"RUB", u"USD" ]
+        self.m_choice12 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice12Choices, 0 )
+        self.m_choice12.SetSelection( 0 )
+        gSizer2.Add( self.m_choice12, 0, wx.ALL|wx.EXPAND, 5 )
 
         self.m_staticText14 = wx.StaticText( self, wx.ID_ANY, u"Bond coupon type", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
         self.m_staticText14.Wrap( -1 )
