@@ -13,16 +13,26 @@ import sqlite3
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':95}
+cross_rates={'USD':97}
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
     #cursor = connection.cursor()
     
-    sql_str=f'select max(date) from bonds_schedule WHERE ISIN like "{isin}"'
+    sql_str=f'select count(*) from bonds_schedule WHERE ISIN like "{isin}"'
     cursor.execute(sql_str)
     maturity_date = cursor.fetchone()[0]
-    d = datetime.datetime.strptime(maturity_date, '%Y%m%d')
+    
+    if maturity_date>0:    
+        sql_str=f'select max(date) from bonds_schedule WHERE ISIN like "{isin}"'
+        cursor.execute(sql_str)
+        maturity_date = cursor.fetchone()[0]
+        d = datetime.datetime.strptime(maturity_date, '%Y%m%d')
+    else:
+        sql_str=f'select maturity_date from bonds_static WHERE ISIN like "{isin}"'
+        cursor.execute(sql_str)
+        maturity_date = cursor.fetchone()[0]
+        d = datetime.datetime.strptime(maturity_date, '%Y%m%d')        
     
     return d
 
@@ -114,7 +124,7 @@ def update_fcy_rates():
             cross_rates['USD']=float(b[0][2])
             print(cross_rates)    
     
-def get_bond_rating_old(cursor, isin):
+def get_bond_credit_rating(cursor, isin):
     #cursor = connection.cursor()
     
     sql_str=f'select rating, ifnull(percent_type,"fixed") as type_ from bonds_static WHERE ISIN like "{isin}"'
@@ -122,7 +132,7 @@ def get_bond_rating_old(cursor, isin):
     sql_res = cursor.fetchone()    
     results={'rating':sql_res[0], 'type': sql_res[1]}
     
-    sql_str=f'select distinct ifnull(nominal_currency,"RUB") as currency from bonds_schedule where isin like "{isin}"'
+    sql_str=f'select distinct ifnull(instrument_currency,"RUB") as currency from trading_instruments where isin like "{isin}"'
     cursor.execute(sql_str)
     sql_res = cursor.fetchone()
     results['currency']=sql_res[0]
@@ -130,7 +140,7 @@ def get_bond_rating_old(cursor, isin):
     return results
 
 def get_bond_type_by_rating(cursor, isin):
-    r=get_bond_rating_old(cursor, isin)
+    r=get_bond_credit_rating(cursor, isin)
     rating=r['rating']
     type_=r['type']    
     currency=r['currency']
@@ -155,6 +165,33 @@ def get_bond_type_by_rating(cursor, isin):
         return 'wrong rating!'
     
     return 'none'
+
+def get_instrument_type_extended(cursor, isin):
+    instr_type=get_instrument_type(cursor, isin)
+    
+    ret_string=f'{instr_type}'
+    if instr_type != 'bond':
+        return ret_string
+    else:
+        r=get_bond_credit_rating(cursor, isin)
+        rating=r['rating']
+        type_=r['type']    
+        currency=r['currency']    
+        num=ratings.get(rating, -1)    
+        if num == 27:
+            bond_credit_type='Gov'
+            return f'{instr_type}/{bond_credit_type}/{type_}/{currency}'
+        elif num<=26 and num>16:
+            bond_credit_type='Corp'
+            return f'{instr_type}/{bond_credit_type}/{type_}/{currency}'
+        elif num<=16 and num>=0:
+            bond_credit_type='VDO'
+            return f'{instr_type}/{bond_credit_type}/{type_}/{currency}'            
+        elif num==-1:
+            return 'wrong rating!'
+    
+    return 'none'
+
 
 def get_bond_nearest_coupon_date(cursor, isin):
     d = datetime.datetime.today()
@@ -345,6 +382,22 @@ def get_equity_info_moex(isin):
 
     return eq_info
 
+def get_cash_info(isin):
+    secid=""
+    shortname=""
+    inn=""    
+                            
+    cash_info={}
+    cash_info["isin"]=isin
+    cash_info["secid"]=isin
+    cash_info["shortname"]="cash"
+    cash_info["last_price"]=1
+    cash_info["emitent_inn"]="my cash"
+    full_price=1
+    cash_info["full_price"]=1
+
+    return cash_info
+
 
 def calc_portfolio_pct_days(days=365):
     # calculate payments pcts in portfolio betwen current date and DAYS 
@@ -386,15 +439,19 @@ def calc_portfolio_value(cursor):
         cursor.execute(sql_str)
         instrument_type=cursor.fetchone()[0]
         
+        data={}
         if instrument_type=='bond':
             data=get_bond_info_moex(item[0])
         elif instrument_type=='equity':
             data=get_equity_info_moex(item[0])
         elif instrument_type=='etf':
             data=get_equity_info_moex(item[0])
+        elif instrument_type=='cash':
+            data=get_cash_info(item[0])            
             
         portfolios[item[2]]=portfolios.get(item[2],0)+data["full_price"]*item[1]
         total_val=total_val+data["full_price"]*item[1]
+        #print(f'{item[2]};{item[1]};{data["full_price"]}')
 
         #save price to DB
         post_market_data(cursor, item[0], f'{instrument_type}_price', today_str, data["last_price"])
@@ -815,3 +872,27 @@ def get_bond_rating(cursor, uti, isin):
         return 'n/d'
        
     return results    
+
+def get_bond_static_data(cursor, isin):    
+    # isin - isin of bond
+    
+    bond_static={}
+    
+    sql_str=f'SELECT count(*) FROM bonds_static bs WHERE 1=1 and bs.isin="{isin}"'
+    cursor.execute(sql_str)
+    result=cursor.fetchone()    
+    
+    if result[0]>0:
+        sql_str=f'SELECT isin, tiker, percent_type, percent_base, call_opt_date, put_opt_dates, issue_date, maturity_date FROM bonds_static bs WHERE 1=1 and bs.isin="{isin}"'
+        cursor.execute(sql_str)
+        result=cursor.fetchone()    
+        bond_static["isin"]=result[0]
+        bond_static["tiker"]=result[1]
+        bond_static["percent_type"]=result[2]
+        bond_static["percent_base"]=result[3]
+        bond_static["call_opt_date"]=result[4]
+        bond_static["put_opt_dates"]=result[5]
+        bond_static["issue_date"]=result[6]
+        bond_static["maturity_date"]=result[7]    
+       
+    return bond_static    
