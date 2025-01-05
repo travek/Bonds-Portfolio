@@ -5,6 +5,7 @@ from base_ui_bonds_portfolio import update_position
 from base_ui_bonds_portfolio import Add_Instrument
 from base_ui_bonds_portfolio import Entity
 from base_ui_bonds_portfolio import CreditRatings
+from base_ui_bonds_portfolio import Bond_schedule
 import sqlite3
 import bonds_functions_db
 import xlsxwriter
@@ -204,7 +205,7 @@ class Add_to_portfolio(Portfolio_add_bond):
             sql_str=f'select count(*) from portfolio where isin like "{isin_}%" and portfolio_id="{portfolio_id}"'
             cursor.execute(sql_str)
             tbl = cursor.fetchone()
-            if tbl is not None and tbl[0]>0:                
+            if tbl is None or tbl[0]==0:                
                 sql_str=f'insert into portfolio(isin, qty, short_name, portfolio_id) values("{isin_}", {qty_}, "{tiker_}", "{portfolio_id}")'
                 cursor.execute(sql_str)
                 self.connection.commit()        
@@ -400,6 +401,126 @@ class Upd_Position(update_position):
     def f_cancel_button( self, event ):
         self.Close()
     
+class CBond_schedule(Bond_schedule):
+    def __init__(self, db_connection):
+        super(CBond_schedule, self).__init__(parent=None)
+        self.connection=db_connection
+        self.init_value=0
+        self.init_col=0
+        self.init_row=0
+        self.grid_cols=[]
+        self.isin_selected=0
+        
+        sql_str=f'select isin, trading_code, trading_place from trading_instruments where instrument_type="bond" order by trading_code '
+        cursor = self.connection.cursor()
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()
+        
+        lb_lst=[]
+        for res in tbl:
+            lb_item=f'{res[0]} / {res[1]} / {res[2]}'
+            lb_lst.append(lb_item)
+            
+        if len(lb_lst)>0:
+            self.m_choice13.SetItems(lb_lst)         
+
+    def fOnChoice( self, event ):        
+        rows = self.m_grid1.GetNumberRows()
+        cols = self.m_grid1.GetNumberCols()
+        
+        for row in range(rows):
+            for col in range(cols):
+                self.m_grid1.SetCellValue(row, col, "")
+        
+        selection=self.m_choice13.GetString(self.m_choice13.GetCurrentSelection())
+        isin=selection.split('/')[0].strip()
+        self.isin_selected=isin
+        
+        sql_str=f'select date, pct_rate, pct_value, pct_currency, nominal_value, nominal_currency from bonds_schedule where isin="{isin}" order by date '        
+        cursor = self.connection.cursor()        
+        cursor.execute(sql_str)
+        col_names = list(map(lambda x: x[0], cursor.description))
+        self.grid_cols=col_names
+        tbl = cursor.fetchall()
+        columns_cnt=len(col_names)
+        get_columns_len=self.m_grid1.GetNumberCols()
+        if get_columns_len>columns_cnt:
+            for i in range(get_columns_len, columns_cnt, -1):
+                self.m_grid1.DeleteCols(pos=1, numCols=1)
+        elif get_columns_len<columns_cnt:            
+            for i in range(get_columns_len, columns_cnt):
+                self.m_grid1.InsertCols(pos=1, numCols=1)                
+                
+        for col in range(len(col_names)):
+            self.m_grid1.SetColLabelValue(col, col_names[col])
+            
+        rows_cnt=len(tbl)
+        get_rows_cnt=self.m_grid1.GetNumberRows()        
+        if get_rows_cnt>rows_cnt:
+            for i in range(get_rows_cnt, rows_cnt, -1):
+                self.m_grid1.DeleteRows(pos=1, numRows=1)
+        elif get_rows_cnt<rows_cnt:            
+            for i in range(get_rows_cnt, rows_cnt):
+                self.m_grid1.InsertRows(pos=1, numRows=1)         
+        
+        r=0
+        for row in tbl:
+            for j, value in enumerate(row):
+                self.m_grid1.SetCellValue(r, j, str(value))            
+            r=r+1
+        
+        
+        event.Skip()
+
+    def fOnGridCellChange( self, event ):
+        cursor = self.connection.cursor()
+        col=event.GetCol()
+        row=event.GetRow()      
+        value=self.m_grid1.GetCellValue(row, col)
+        
+        #if col==self.init_col and row==self.init_row:
+            #print(f'old:{self.init_value}, new:{value}')
+            
+        sql_col_name=self.grid_cols[self.init_col]
+        isin=self.isin_selected
+        selected_date=self.m_grid1.GetCellValue(row, 0)
+        
+        #sql_str=f'update bonds_schedule set {sql_col_name}="{value}" where isin="{isin}" and date="{selected_date}" '
+        #print(sql_str)
+
+        dialog_str=f'Are you sure you want to change schedule for {isin} for date {selected_date} and set new value {value} ?'
+        dlg = wx.MessageDialog(self, message=dialog_str, caption="confirmation", style=wx.YES_NO | wx.ICON_QUESTION ) 
+        if dlg.ShowModal() == wx.ID_YES:
+            sql_str=f'update bonds_schedule set {sql_col_name}="{value}" where isin="{isin}" and date="{selected_date}" '
+            cursor.execute(sql_str)
+            self.connection.commit()  
+            event.Skip()
+        else:
+            event.Skip()
+            return 0        
+        
+        event.Skip()
+
+    def fOnGridSelectCell( self, event ):
+        self.init_col=event.GetCol()
+        self.init_row=event.GetRow()      
+        self.init_value=self.m_grid1.GetCellValue(self.init_row, self.init_col)
+        #print(f'Selected: {col}, {row}')
+        event.Skip()        
+
+
+    def fOnSize( self, event ):
+        widt, heig = self.m_grid1.GetSize()
+        self.m_grid1.HideCol(0)
+        self.m_grid1.HideRowLabels()
+        c = self.m_grid1.GetNumberCols()
+        for col in range(0, c):
+            self.m_grid1.SetColSize(col, round((widt-12)/c))    
+        
+        event.Skip()
+
+
+
     
 
 class Portfolio_UI(Bonds_portfolio):
@@ -430,12 +551,12 @@ class Portfolio_UI(Bonds_portfolio):
         d = datetime.datetime.today()
         today_str=d.strftime("%Y%m%d")
         #sql_str=f'select bs.isin, pct_value from bonds_schedule bs join (select isin, min(date) as md from bonds_schedule where date>="{today_str}" group by isin) as bs2 on bs.isin=bs2.isin and bs.date=bs2.md where pct_value is null or pct_value = 0'
-        sql_str=f'select bp.isin, bs3.pct_value from portfolio bp join ( select bs.isin, pct_value from bonds_schedule bs join (select isin, min(date) as md from bonds_schedule where date>="{today_str}" group by isin) as bs2 on bs.isin=bs2.isin and bs.date=bs2.md where pct_value is null or pct_value = 0 ) bs3 on bp.isin=bs3.isin where bp.qty>0'
+        sql_str=f'select bp.isin, bs3.pct_value, ti.trading_code from portfolio bp join ( select bs.isin, pct_value from bonds_schedule bs join (select isin, min(date) as md from bonds_schedule where date>="{today_str}" group by isin) as bs2 on bs.isin=bs2.isin and bs.date=bs2.md where pct_value is null or pct_value = 0 ) bs3 on bp.isin=bs3.isin join trading_instruments ti on ti.isin=bp.isin where bp.qty>0'
         
         cursor.execute(sql_str)
         tbl = cursor.fetchall()
         for item in tbl:
-            str=f'Bond {item[0]} doesnt have payment amount in bonds_schedule table in DB for current time period! \n'
+            str=f'Bond with ISIN {item[0]} and trading code {item[2]} doesnt have payment amount in bonds_schedule table in DB for current time period! \n'
             self.m_textCtrl3.AppendText(str)        
             
         sql_str=f'select count(*) from bonds_static bs where issuer_uti is null and (select max(date) as maturity from bonds_schedule where isin=bs.isin)>"{today_str}" and (select qty from portfolio where isin=bs.isin)>0'
@@ -461,7 +582,18 @@ class Portfolio_UI(Bonds_portfolio):
             tbl = cursor.fetchall()
             for item in tbl:
                 str=f'Instrument with ISIN {item[0]} is in Portfolio but not in table trading_instruments! \n'
-                self.m_textCtrl3.AppendText(str)                  
+                self.m_textCtrl3.AppendText(str)
+                
+        sql_str=f'select count(*) from (select isin, count(isin) as cnt from trading_instruments group by isin having count(isin)>1 ) ti join bonds_static bs on bs.isin=ti.isin'
+        cursor.execute(sql_str)
+        res=cursor.fetchone()[0]
+        if res>0:
+            sql_str=f'select ti.isin, bs.tiker, cnt from (select isin, count(isin) as cnt from trading_instruments group by isin having count(isin)>1 ) ti join bonds_static bs on bs.isin=ti.isin'
+            cursor.execute(sql_str)
+            tbl = cursor.fetchall()
+            for item in tbl:
+                str=f'Instrument with ISIN {item[0]}, tiker {item[1]} has more than 1 entry in trading_instruments! \n'
+                self.m_textCtrl3.AppendText(str)                   
         
         
         
@@ -736,11 +868,19 @@ class Portfolio_UI(Bonds_portfolio):
         
         #connection.close()
         
+    def fMenuBondSchedule( self, event ):
+        frame_add=CBond_schedule(db_connection=self.connection)
+        frame_add.Show()        
+        event.Skip()
+        
+        
     def f_load_bond_from_file( self, event ):        
         self.m_textCtrl3.Clear()
         fd = wx.FileDialog(self, message="Choose a file", style=wx.FD_OPEN|wx.FD_FILE_MUST_EXIST, wildcard="Text files (*.txt)|*.txt", defaultDir="d:\\Alexey\\Python Projects\\Bonds CF\\Data\\", defaultFile="example.txt")
         if fd.ShowModal() == wx.ID_OK:
             path = fd.GetPath()
+        else:
+            return 0
         fd.Destroy()
         cursor = self.connection.cursor()
         
