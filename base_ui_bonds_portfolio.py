@@ -1,6 +1,6 @@
-
 import wx
 import wx.xrc
+import wx.grid
 
 ID_EXIT = 1000
 ID_PORTFOLIO_MARKET_VALUE = 1001
@@ -81,8 +81,15 @@ class Bonds_portfolio ( wx.Frame ):
         self.AddBondStaticData = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add instrument", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.AddBondStaticData )
 
+        self.staticData.AppendSeparator()
+
         self.loadBondFromFile = wx.MenuItem( self.staticData, ID_LOAD_BOND_FROM_FILE, u"Load bond from file", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.loadBondFromFile )
+
+        self.m_menuItem18 = wx.MenuItem( self.staticData, wx.ID_ANY, u"Bond schedules", wx.EmptyString, wx.ITEM_NORMAL )
+        self.staticData.Append( self.m_menuItem18 )
+
+        self.staticData.AppendSeparator()
 
         self.m_menuEntity = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add Entity", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.m_menuEntity )
@@ -128,6 +135,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.upload_portfolio_from_file2DB, id = self.uploadFromFile.GetId() )
         self.Bind( wx.EVT_MENU, self.f_add_bond_static_data, id = self.AddBondStaticData.GetId() )
         self.Bind( wx.EVT_MENU, self.f_load_bond_from_file, id = self.loadBondFromFile.GetId() )
+        self.Bind( wx.EVT_MENU, self.fMenuBondSchedule, id = self.m_menuItem18.GetId() )
         self.Bind( wx.EVT_MENU, self.f_Add_Entity_Action, id = self.m_menuEntity.GetId() )
         self.Bind( wx.EVT_MENU, self.OnCreditRatings_Manage, id = self.m_menuItem17.GetId() )
 
@@ -179,6 +187,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def f_load_bond_from_file( self, event ):
+        event.Skip()
+
+    def fMenuBondSchedule( self, event ):
         event.Skip()
 
     def f_Add_Entity_Action( self, event ):
@@ -797,6 +808,78 @@ class CreditRatings ( wx.Frame ):
         event.Skip()
 
     def CreditRating_onAction( self, event ):
+        event.Skip()
+
+
+###########################################################################
+## Class Bond_schedule
+###########################################################################
+
+class Bond_schedule ( wx.Frame ):
+
+    def __init__( self, parent ):
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Bond schedule", pos = wx.DefaultPosition, size = wx.Size( 838,300 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+
+        self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+
+        bSizer4 = wx.BoxSizer( wx.VERTICAL )
+
+        m_choice13Choices = []
+        self.m_choice13 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice13Choices, 0 )
+        self.m_choice13.SetSelection( 0 )
+        bSizer4.Add( self.m_choice13, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_grid1 = wx.grid.Grid( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
+
+        # Grid
+        self.m_grid1.CreateGrid( 5, 5 )
+        self.m_grid1.EnableEditing( True )
+        self.m_grid1.EnableGridLines( True )
+        self.m_grid1.EnableDragGridSize( False )
+        self.m_grid1.SetMargins( 0, 0 )
+
+        # Columns
+        self.m_grid1.EnableDragColMove( False )
+        self.m_grid1.EnableDragColSize( True )
+        self.m_grid1.SetColLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+        # Rows
+        self.m_grid1.EnableDragRowSize( True )
+        self.m_grid1.SetRowLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+        # Label Appearance
+
+        # Cell Defaults
+        self.m_grid1.SetDefaultCellAlignment( wx.ALIGN_LEFT, wx.ALIGN_TOP )
+        bSizer4.Add( self.m_grid1, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+        self.SetSizer( bSizer4 )
+        self.Layout()
+
+        self.Centre( wx.BOTH )
+
+        # Connect Events
+        self.m_choice13.Bind( wx.EVT_CHOICE, self.fOnChoice )
+        self.m_grid1.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.fOnGridCellChange )
+        self.m_grid1.Bind( wx.grid.EVT_GRID_SELECT_CELL, self.fOnGridSelectCell )
+        self.m_grid1.Bind( wx.EVT_SIZE, self.fOnSize )
+
+    def __del__( self ):
+        pass
+
+
+    # Virtual event handlers, override them in your derived class
+    def fOnChoice( self, event ):
+        event.Skip()
+
+    def fOnGridCellChange( self, event ):
+        event.Skip()
+
+    def fOnGridSelectCell( self, event ):
+        event.Skip()
+
+    def fOnSize( self, event ):
         event.Skip()
 
 

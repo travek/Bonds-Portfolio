@@ -13,7 +13,7 @@ import sqlite3
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':97}
+cross_rates={'USD':99}
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
