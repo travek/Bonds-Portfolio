@@ -244,13 +244,14 @@ def get_bond_info_moex(isin):
         if f=="shortname":
             shortname=b
         if f=="emitent_inn":
-            inn=b
+            inn=b         
                 
     req_str='https://iss.moex.com/iss/engines/stock/markets/bonds/securities/'+secid+'.json?marketprice_board=1'
     nkd=0
     nominal=0
     last_price=0
     fixed_coupon=0
+    settle_date=0
     j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
     for f, b in zip(j['securities']['columns'], j['securities']['data'][0]):
         if f=="ACCRUEDINT":
@@ -260,6 +261,9 @@ def get_bond_info_moex(isin):
         if f=="COUPONPERCENT":
             if b is not None:
                 fixed_coupon=b
+        if f=="SETTLEDATE":
+            if b is not None:
+                settle_date=b                
     
     last_price=0
     for f, b in zip(j['marketdata']['columns'], j['marketdata']['data'][0]):
@@ -327,6 +331,7 @@ def get_bond_info_moex(isin):
     bond_info["issue_size"]=issue_size
     bond_info["current_coupon"]=current_coupon
     bond_info["bond_currency"]=bond_currency
+    bond_info["settle_date"]=settle_date
 
     return bond_info
 
@@ -896,3 +901,229 @@ def get_bond_static_data(cursor, isin):
         bond_static["maturity_date"]=result[7]    
        
     return bond_static    
+
+def days_between_dates(date_str1, date_str2):
+    # первый аргумет - строка в формате YYYYMMDD
+    # второй аргумет - дата
+    # Шаг 1: Конвертируем строку в объект datetime
+    date_format = '%Y%m%d'  # Указываем формат строки
+    date_object1 = datetime.datetime.strptime(date_str1, date_format)
+    date_object2 = datetime.datetime.strptime(date_str2, date_format)
+    
+    # Шаг 2: Вычисляем разницу в днях
+    delta = date_object2 - date_object1
+    return abs(delta.days)
+
+def calc_bond_YTM(cursor, isin='RU000A1074Q1'):
+    # calculate discounted margine for bonds with floating interest rate.
+    # We replicate current coupoun for all rest payments of the bond and discount them like we calculate YTM.
+    
+    d = datetime.datetime.today()
+    #cursor = connection.cursor()
+    today_str=d.strftime("%Y%m%d")
+    
+    bond_data=get_bond_info_moex(isin)
+    bond_full_price=bond_data["full_price"]
+    #print(bond_full_price)
+    bond_settle_date=bond_data["settle_date"]
+    bond_settle_date2 = datetime.datetime.strptime(bond_settle_date, "%Y-%m-%d")
+    bond_settle_date2 = bond_settle_date2.strftime("%Y%m%d")    
+    
+    sql_str=f'select count(*) from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
+    #print(sql_str)
+    cursor.execute(sql_str)
+    result=cursor.fetchone() 
+    track_calc=[]
+    
+    if result[0]>0:
+        sql_str=f'select date, pct_value, ifnull(nominal_value,0) as nominal from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
+        cursor.execute(sql_str)
+        tbl=cursor.fetchall()          
+        
+        for i in tbl:
+            date1=i[0]
+            pct_value1=i[1]
+            nominal1=i[2]
+            days_between=days_between_dates(bond_settle_date2, date1)
+            ti_365=days_between/365
+            
+            #print(f'{date1}, {pct_value1}, {nominal1}, {days_between}, {ti_365}')            
+            track_calc.append({"pct_value":pct_value1, "nominal_value":nominal1, "days_between":days_between, "ti_365":ti_365})
+        
+    else:
+        print(f'No payment schedule for bond {isin}')
+        return None
+    
+    #print(track_calc)
+    
+    start = -1000
+    end = 1000
+    step = 10 #0.0001
+    min_diff=10000000000
+    YTM=0
+    phase=0
+    
+    while step>=0.0001 and phase<1000:
+        ytm_discount = start
+        while ytm_discount <= end:
+            #print(ytm_discount)
+            
+            summ=0
+            for i in track_calc:
+                discount1=(1+ytm_discount/100)
+                if discount1==0:
+                    break
+                discount_pwr=discount1 ** i["ti_365"]
+                summ=summ+i["pct_value"]/discount_pwr+i["nominal_value"]/discount_pwr
+            
+            diff=bond_full_price-summ
+            #print(summ)        
+            #print(diff)
+            #print(diff.real)
+            if abs(diff.real)<min_diff:
+                YTM=ytm_discount
+                #print(YTM)
+                min_diff=abs(diff.real)
+                
+                start1=YTM-3*step
+                end1=YTM+3*step
+                step1=step/10
+                
+                #print(min_diff, YTM, start1, end1, step1)
+                
+                
+            ytm_discount += step
+            phase=phase+1
+        start=start1
+        end=end1
+        step=step1
+        min_diff=10000000000
+    
+    print(f'finally calculated YTM: {YTM}')
+    print('fin')
+    
+    
+def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
+    # calculate discounted margine for bonds with floating interest rate.
+    # We replicate current coupoun for all rest payments of the bond and discount them like we calculate YTM.
+    
+    #Check if bond if float
+    sql_str=f'select count(*) from bonds_static where isin="{isin}"'
+    cursor.execute(sql_str)
+    result=cursor.fetchone() 
+    if result==0:
+        print(f'Bond {isin} is not in bonds_static table')
+        return None
+    
+    sql_str=f'select ifnull(percent_type, "fix") from bonds_static where isin="{isin}"'
+    cursor.execute(sql_str)
+    result=cursor.fetchone()     
+    if result[0]!='float':
+        print(f'Bond {isin} is not float')
+        return None   
+    
+    sql_str=f'select count(*) from bonds_schedule where isin="{isin}" and pct_value>0'
+    cursor.execute(sql_str)
+    result=cursor.fetchone() 
+    if result==0:
+        print(f'Bond {isin} doesnt have caluclated payments in payments schedule!')
+        return None
+    
+    
+    d = datetime.datetime.today()
+    #cursor = connection.cursor()
+    today_str=d.strftime("%Y%m%d")
+    
+    bond_data=get_bond_info_moex(isin)
+    bond_full_price=bond_data["full_price"]
+    print(bond_full_price)
+    bond_settle_date=bond_data["settle_date"]
+    bond_settle_date2 = datetime.datetime.strptime(bond_settle_date, "%Y-%m-%d")
+    bond_settle_date2 = bond_settle_date2.strftime("%Y%m%d")    
+    
+    sql_str=f'select count(*) from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
+    #print(sql_str)
+    cursor.execute(sql_str)
+    result=cursor.fetchone() 
+    track_calc=[]
+    
+    if result[0]>0:
+        sql_str=f'select date, pct_value, ifnull(nominal_value,0) as nominal from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
+        cursor.execute(sql_str)
+        tbl=cursor.fetchall()          
+        
+        for i in tbl:
+            date1=i[0]
+            pct_value1=i[1]
+            if not (pct_value1>0):
+                sql_str=f'select pct_value from bonds_schedule where isin="{isin}" and date=(select max(date) from bonds_schedule where isin="{isin}" and pct_value>0) '
+                cursor.execute(sql_str)
+                pct=cursor.fetchone() 
+                pct_value1=pct[0]
+            nominal1=i[2]
+            days_between=days_between_dates(bond_settle_date2, date1)
+            ti_365=days_between/365
+            
+            print(f'{date1}, {pct_value1}, {nominal1}, {days_between}, {ti_365}')            
+            track_calc.append({"pct_value":pct_value1, "nominal_value":nominal1, "days_between":days_between, "ti_365":ti_365})
+        
+    else:
+        print(f'No payment schedule for bond {isin}')
+        return None
+    
+    #print(track_calc)
+    
+    start = 0
+    end = 1000
+    step = 10 #0.0001
+    min_diff=10000000000
+    YTM=0
+    phase=0
+    
+    while step>=0.0001 and phase<1000:
+        ytm_discount = start
+        while ytm_discount <= end:
+            print(ytm_discount)
+            if ytm_discount==-190:
+                print(1)
+            
+            summ=0
+            for i in track_calc:
+                discount1=(1+ytm_discount/100)
+                if discount1==0:
+                    break
+                discount_pwr=discount1 ** i["ti_365"]
+                #if isinstance(discount_pwr, complex):
+                    #discount_pwr=abs(discount_pwr)
+                summ=summ+i["pct_value"]/discount_pwr+i["nominal_value"]/discount_pwr
+            
+            if isinstance(summ, complex):
+                summ=summ.real
+            diff=bond_full_price-summ
+            print(summ)        
+            print(diff)
+            print(f'diff.real: {diff.real}')
+            if abs(diff)<min_diff:
+                YTM=ytm_discount
+                print(YTM)
+                min_diff=abs(diff.real)
+                
+                start1=YTM-3*step
+                end1=YTM+3*step
+                step1=step/10
+                
+                print(min_diff, YTM, start1, end1, step1)
+                
+                
+            print(f'min diff: {min_diff}, YTM: {YTM}, {start1}, {end1}, {step1}')
+            ytm_discount += step
+            phase=phase+1
+        start=start1
+        end=end1
+        step=step1
+        min_diff=10000000000
+    
+    print(f'finally calculated Discounted Margine: {YTM}')
+    print('fin')
+    return YTM
+    
