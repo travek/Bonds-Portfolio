@@ -529,8 +529,8 @@ class Portfolio_UI(Bonds_portfolio):
         self.connection=db_connection
         #self.connection = sqlite3.connect('portfolio_database.db')
         self.run_data_checks(None)
-        
-        
+        self.test=bonds_functions_db.calc_bond_discounted_margine(self.connection.cursor())
+                
     def Exit_app( self, event ):
         event.Skip()   
         wx.Exit()
@@ -677,10 +677,9 @@ class Portfolio_UI(Bonds_portfolio):
         worksheet.write('M1', 'Instrument_type', bold)
         worksheet.write('N1', 'Last_Price', bold)
         worksheet.write('O1', 'Coupon_yield', bold)
-        worksheet.write('P1', 'Coupon_period', bold)
-        worksheet.write('Q1', 'Portfolio ID', bold)
-
-        worksheet.write('R1', 'Issuer entity', bold) 
+        worksheet.write('P1', 'Coupon_period', bold)        
+        worksheet.write('Q1', 'Issuer entity', bold) 
+        worksheet.write('R1', 'Portfolio ID', bold)
         
         worksheet.write('S1', 'amo date', bold)
         worksheet.write('T1', 'amo value', bold)
@@ -691,7 +690,7 @@ class Portfolio_UI(Bonds_portfolio):
         worksheet.write('W1', 'Call option dates', bold) 
         worksheet.write('X1', 'Put option dates', bold) 
         worksheet.write('Y1', 'Current coupon', bold) 
-        
+        worksheet.write('Z1', 'disc margine', bold)         
                 
         #sql_str=f'SELECT bp.isin, qty, short_name, percent_type, percent_base, portfolio_id, call_opt_date, put_opt_dates FROM portfolio bp join bonds_static bs on bs.isin=bp.isin WHERE 1=1 and qty>0 and exists (select * from bonds_schedule bsc where bsc.isin=bp.isin and bsc.date>"{today_str}")'
         sql_str=f'select bp.isin, bp.qty, bp.portfolio_id FROM portfolio bp WHERE 1=1 and qty>0'
@@ -734,10 +733,10 @@ class Portfolio_UI(Bonds_portfolio):
                 except ZeroDivisionError:
                         worksheet.write(row, col + 14, moex_data["current_coupon"])
                 worksheet.write(row, col + 15, moex_data["coupon_period"])
-                worksheet.write(row, col + 16, item[2])
                 
                 issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
-                worksheet.write(row, col + 17, issuer["issuer_short_name"])              
+                worksheet.write(row, col + 16, issuer["issuer_short_name"])              
+                worksheet.write(row, col + 17, item[2]) 
     
                 amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), isin)
                 if amo_value.get("date")!='':
@@ -752,6 +751,8 @@ class Portfolio_UI(Bonds_portfolio):
                 worksheet.write(row, col + 23, bond["put_opt_dates"])
                 
                 worksheet.write(row, col + 24, moex_data["fixed_coupon"])
+                if bond["percent_type"]=="float":
+                    worksheet.write(row, col + 25, bonds_functions_db.calc_bond_discounted_margine(self.connection.cursor(), isin)) 
                 
             if instr_type in ['equity', 'etf']:
                 if instr_type=='equity':
@@ -788,10 +789,10 @@ class Portfolio_UI(Bonds_portfolio):
                 #except ZeroDivisionError:
                         #worksheet.write(row, col + 14, moex_data["current_coupon"])
                 #worksheet.write(row, col + 15, moex_data["coupon_period"])
-                worksheet.write(row, col + 16, item[2])
+                worksheet.write(row, col + 17, item[2])
                 
                 #issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
-                #worksheet.write(row, col + 17, issuer["issuer_short_name"])              
+                #worksheet.write(row, col + 16, issuer["issuer_short_name"])              
     
                 #amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), isin)
                 #if amo_value.get("date")!='':
@@ -840,10 +841,10 @@ class Portfolio_UI(Bonds_portfolio):
                 #except ZeroDivisionError:
                         #worksheet.write(row, col + 14, moex_data["current_coupon"])
                 #worksheet.write(row, col + 15, moex_data["coupon_period"])
-                worksheet.write(row, col + 16, item[2])
+                worksheet.write(row, col + 17, item[2])
                 
                 #issuer=bonds_functions_db.get_bond_issuer(self.connection.cursor(), isin)
-                #worksheet.write(row, col + 17, issuer["issuer_short_name"])              
+                #worksheet.write(row, col + 16, issuer["issuer_short_name"])              
     
                 #amo_value=bonds_functions_db.get_bond_amortization(self.connection.cursor(), isin)
                 #if amo_value.get("date")!='':
