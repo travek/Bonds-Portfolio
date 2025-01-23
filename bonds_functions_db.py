@@ -9,6 +9,8 @@ import settings
 import xlsxwriter
 import re
 import sqlite3
+import logging
+
 
 portfolio_ext = SortedDict()
 
@@ -96,6 +98,25 @@ def get_bond_amortization(cursor, isin):
     amo_value = cursor.fetchone()[0]
     
     return {"date":amo_date, "value":amo_value}
+
+def get_bond_nominal_on_date(cursor, isin, date):
+    full_nominal=0
+    
+    sql_str=f'select sum(nominal_value) from bonds_schedule where isin="{isin}"'
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    full_nominal=sql_res[0]
+    
+    nominal_on_date=0
+    
+    sql_str=f'select sum(nominal_value) from bonds_schedule where isin="{isin}" and date<="{date}" '
+    cursor.execute(sql_str)
+    sql_res = cursor.fetchone()
+    nominal_on_date=sql_res[0]    
+    
+    nominal_on_date=full_nominal-nominal_on_date
+    return nominal_on_date
+    
 
 def get_bond_issuer(cursor, isin):
     #cursor = connection.cursor()
@@ -252,6 +273,7 @@ def get_bond_info_moex(isin):
     last_price=0
     fixed_coupon=0
     settle_date=0
+    putopt_date=0
     j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
     for f, b in zip(j['securities']['columns'], j['securities']['data'][0]):
         if f=="ACCRUEDINT":
@@ -264,6 +286,9 @@ def get_bond_info_moex(isin):
         if f=="SETTLEDATE":
             if b is not None:
                 settle_date=b                
+        if f=="PUTOPTIONDATE":
+            if b is not None:
+                putopt_date=b                    
     
     last_price=0
     for f, b in zip(j['marketdata']['columns'], j['marketdata']['data'][0]):
@@ -332,6 +357,7 @@ def get_bond_info_moex(isin):
     bond_info["current_coupon"]=current_coupon
     bond_info["bond_currency"]=bond_currency
     bond_info["settle_date"]=settle_date
+    bond_info["put_option_date"]=putopt_date
 
     return bond_info
 
@@ -355,6 +381,7 @@ def get_equity_info_moex(isin):
             inn=b
                 
     req_str='https://iss.moex.com/iss/engines/stock/markets/shares/securities/'+secid+'.json?marketprice_board=1'
+    #print(req_str)
     nkd=0
     nominal=0
     last_price=0
@@ -1004,6 +1031,7 @@ def calc_bond_YTM(cursor, isin='RU000A1074Q1'):
     
     
 def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
+    logging.basicConfig(level=logging.WARN, filename='Logs\disc_margine.log', filemode='w')
     # calculate discounted margine for bonds with floating interest rate.
     # We replicate current coupoun for all rest payments of the bond and discount them like we calculate YTM.
     
@@ -1036,10 +1064,11 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
     
     bond_data=get_bond_info_moex(isin)
     bond_full_price=bond_data["full_price"]
-    print(bond_full_price)
+    logging.info(f'bond_full_price: {bond_full_price}')
     bond_settle_date=bond_data["settle_date"]
     bond_settle_date2 = datetime.datetime.strptime(bond_settle_date, "%Y-%m-%d")
     bond_settle_date2 = bond_settle_date2.strftime("%Y%m%d")    
+    logging.info(f'bond_settle_date2: {bond_settle_date2}')
     
     sql_str=f'select count(*) from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
     #print(sql_str)
@@ -1048,7 +1077,21 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
     track_calc=[]
     
     if result[0]>0:
-        sql_str=f'select date, pct_value, ifnull(nominal_value,0) as nominal from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}"'
+        
+        sql_str=f'select max(ifnull(date, 20990101)) from bonds_schedule where isin="{isin}"'
+        cursor.execute(sql_str)
+        tbl=cursor.fetchone()
+        maturity_date=tbl[0]
+        
+        sql_str=f'select min(ifnull(put_opt_dates, 20990101)) from bonds_static where isin="{isin}" and ifnull(put_opt_dates, 20990101)>="{today_str}"'
+        cursor.execute(sql_str)
+        tbl=cursor.fetchone()
+        put_option_date=tbl[0]        
+        #print(put_option_date)
+        
+        # Начитываем график платежей, но до пут-оферты
+        sql_str=f'select date, pct_value, ifnull(nominal_value,0) as nominal from bonds_schedule where isin="{isin}" and date>="{bond_settle_date2}" and date<="{put_option_date}"'
+        logging.info(f'sql_str: {sql_str}')
         cursor.execute(sql_str)
         tbl=cursor.fetchall()          
         
@@ -1061,17 +1104,23 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
                 pct=cursor.fetchone() 
                 pct_value1=pct[0]
             nominal1=i[2]
+            # Если дата оферты, то добавляем номинал
+            if date1==put_option_date:
+                nominal_on_date=get_bond_nominal_on_date(cursor, isin, put_option_date) 
+                #print(f'{put_option_date}, {nominal_on_date}')
+                nominal1=nominal_on_date
+                
             days_between=days_between_dates(bond_settle_date2, date1)
             ti_365=days_between/365
             
-            print(f'{date1}, {pct_value1}, {nominal1}, {days_between}, {ti_365}')            
+            logging.info(f'{date1}, {pct_value1}, {nominal1}, {days_between}, {ti_365}')
             track_calc.append({"pct_value":pct_value1, "nominal_value":nominal1, "days_between":days_between, "ti_365":ti_365})
         
     else:
         print(f'No payment schedule for bond {isin}')
         return None
     
-    #print(track_calc)
+    logging.info(f'{track_calc}')
     
     start = 0
     end = 1000
@@ -1083,9 +1132,9 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
     while step>=0.0001 and phase<1000:
         ytm_discount = start
         while ytm_discount <= end:
-            print(ytm_discount)
-            if ytm_discount==-190:
-                print(1)
+            logging.info(f'ytm_discount: {ytm_discount}')
+            #if ytm_discount==-190:
+                #print(1)
             
             summ=0
             for i in track_calc:
@@ -1100,22 +1149,22 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
             if isinstance(summ, complex):
                 summ=summ.real
             diff=bond_full_price-summ
-            print(summ)        
-            print(diff)
-            print(f'diff.real: {diff.real}')
+            logging.info(summ)        
+            logging.info(diff)
+            logging.info(f'diff.real: {diff.real}')
             if abs(diff)<min_diff:
                 YTM=ytm_discount
-                print(YTM)
+                logging.info(YTM)
                 min_diff=abs(diff.real)
                 
                 start1=YTM-3*step
                 end1=YTM+3*step
                 step1=step/10
                 
-                print(min_diff, YTM, start1, end1, step1)
+                logging.info(f'{min_diff}, {YTM}, {start1}, {end1}, {step1}')
                 
                 
-            print(f'min diff: {min_diff}, YTM: {YTM}, {start1}, {end1}, {step1}')
+            logging.info(f'min diff: {min_diff}, YTM: {YTM}, {start1}, {end1}, {step1}')
             ytm_discount += step
             phase=phase+1
         start=start1
@@ -1123,7 +1172,7 @@ def calc_bond_discounted_margine(cursor, isin='RU000A108777'):
         step=step1
         min_diff=10000000000
     
-    print(f'finally calculated Discounted Margine: {YTM}')
-    print('fin')
+    logging.info(f'finally calculated Discounted Margine: {YTM}')
+    logging.info('fin')
     return YTM
     
