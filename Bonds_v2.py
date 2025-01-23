@@ -14,6 +14,7 @@ from sortedcontainers import SortedDict
 import pandas as pd
 import plotly.subplots as ps
 import plotly.graph_objs as go
+import supp_functions
 
 
 class CEntity(Entity):
@@ -295,6 +296,10 @@ class my_Add_Instrument(Add_Instrument):
         sql_str=f'select count(*) from trading_instruments where isin="{isin_}" '
         cursor.execute(sql_str)
         tbl2 = cursor.fetchone()        
+        
+        if not supp_functions.string_is_date(puts) and puts!="":
+            print(f'string is not date: {puts}')
+            return
         
         if tbl[0]>0 or tbl2[0]>0:
             print(f'Bond {isin_} already in DB')
@@ -1226,7 +1231,60 @@ class Portfolio_UI(Bonds_portfolio):
         
     def OnCreditRatings_Manage( self, event ):
         frame_Credit_ratings=CCreditRatings(db_connection=self.connection)
-        frame_Credit_ratings.Show()         
+        frame_Credit_ratings.Show()  
+        
+    def f_moex_bonds_options( self, event ):
+        cursor = self.connection.cursor()
+        
+        sql_str='select count(*) from portfolio p left join trading_instruments ti on ti.isin=p.isin left join bonds_static bs on bs.isin=p.isin where qty>0 and ti.instrument_type="bond"'
+        cursor.execute(sql_str)
+        res=cursor.fetchone()        
+        
+        if res[0]==0:
+            return
+        
+        f_name='Export_files\\bonds_option_dates.xlsx'
+        workbook = xlsxwriter.Workbook(f_name)
+        worksheet = workbook.add_worksheet()
+        # Add a bold format to use to highlight cells.
+        bold = workbook.add_format({'bold': True})
+        #date_format = workbook.add_format({'num_format': 'dd/mm/yy'})
+        
+        worksheet.write('A1', 'ISIN', bold)
+        worksheet.write('B1', 'My qty', bold)
+        worksheet.write('C1', 'instrument type', bold)
+        worksheet.write('D1', 'put_date in DB', bold)        
+        worksheet.write('E1', 'put_date from MOEX', bold)        
+                
+        sql_str='select p.isin, p.qty, ti.instrument_type, bs.put_opt_dates, trading_code from portfolio p left join trading_instruments ti on ti.isin=p.isin left join bonds_static bs on bs.isin=p.isin where qty>0 and ti.instrument_type="bond"'        
+        cursor.execute(sql_str)
+        tbl = cursor.fetchall()        
+        
+        row = 1
+        col = 0           
+        for item in tbl:
+            isin=item[0]
+            qty=item[1]
+            instr_type=item[2]
+            opt_date1=item[3]
+            trading_code=item[4]
+            moex_data=bonds_functions_db.get_bond_info_moex(isin)
+            opt_date2=moex_data["put_option_date"]
+            
+            worksheet.write(row, col,     isin)
+            worksheet.write(row, col+1,     trading_code)
+            worksheet.write(row, col+2,     qty)
+            worksheet.write(row, col+3,     instr_type)
+            worksheet.write(row, col+4,     opt_date1)
+            worksheet.write(row, col+5,     opt_date2)
+            
+            row+=1
+                        
+        workbook.close()   
+        print("bonds option dates reconciliation with MOEX exported!")
+        self.m_textCtrl3.AppendText(f'Excel file exported! \n')
+        
+        
         
 
 if __name__ == "__main__":

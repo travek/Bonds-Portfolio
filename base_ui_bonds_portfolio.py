@@ -94,6 +94,11 @@ class Bonds_portfolio ( wx.Frame ):
         self.m_menuEntity = wx.MenuItem( self.staticData, wx.ID_ANY, u"Add Entity", wx.EmptyString, wx.ITEM_NORMAL )
         self.staticData.Append( self.m_menuEntity )
 
+        self.staticData.AppendSeparator()
+
+        self.m_menuItem19 = wx.MenuItem( self.staticData, wx.ID_ANY, u"MOEX: Check options", wx.EmptyString, wx.ITEM_NORMAL )
+        self.staticData.Append( self.m_menuItem19 )
+
         self.m_menubar1.Append( self.staticData, u"Static data" )
 
         self.m_CreditRatings = wx.Menu()
@@ -137,6 +142,7 @@ class Bonds_portfolio ( wx.Frame ):
         self.Bind( wx.EVT_MENU, self.f_load_bond_from_file, id = self.loadBondFromFile.GetId() )
         self.Bind( wx.EVT_MENU, self.fMenuBondSchedule, id = self.m_menuItem18.GetId() )
         self.Bind( wx.EVT_MENU, self.f_Add_Entity_Action, id = self.m_menuEntity.GetId() )
+        self.Bind( wx.EVT_MENU, self.f_moex_bonds_options, id = self.m_menuItem19.GetId() )
         self.Bind( wx.EVT_MENU, self.OnCreditRatings_Manage, id = self.m_menuItem17.GetId() )
 
     def __del__( self ):
@@ -193,6 +199,9 @@ class Bonds_portfolio ( wx.Frame ):
         event.Skip()
 
     def f_Add_Entity_Action( self, event ):
+        event.Skip()
+
+    def f_moex_bonds_options( self, event ):
         event.Skip()
 
     def OnCreditRatings_Manage( self, event ):
