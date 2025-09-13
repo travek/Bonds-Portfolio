@@ -15,7 +15,7 @@ import logging
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':82}
+cross_rates={'USD':82, 'CNY':11.4}
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
@@ -346,8 +346,8 @@ def get_bond_info_moex(isin):
     bond_info["emitent_inn"]=inn
     bond_info["fixed_coupon"]=fixed_coupon
     full_price=0.0
-    if bond_currency in ["USD"]:
-        full_price=nominal*last_price*cross_rates.get(bond_currency)/100+nkd
+    if bond_currency in ["USD", "CNY"]:
+        full_price=nominal*last_price*cross_rates.get(bond_currency)/100+nkd        
     else:
         full_price=nominal*last_price/100+nkd
     bond_info["full_price"]=full_price

@@ -1001,6 +1001,8 @@ class Portfolio_UI(Bonds_portfolio):
         bonds_functions_db.update_fcy_rates()
                         
         cf_all = SortedDict()
+        
+        f1 = open('out.txt', 'w')
 
         while end_date<=bonds_functions_db.calc_last_day_of_month(d):
             start_date_str=start_date.strftime("%Y%m%d")
@@ -1008,7 +1010,7 @@ class Portfolio_UI(Bonds_portfolio):
             
             if calc_type==1:
                 #sql_str=f'select sum(pct_value*bp.qty + nominal_value*bp.qty) from portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}"'                
-                sql_str=f'select sum(pct_value*bp.qty + nominal_value*bp.qty) as val, ifnull(bs.nominal_currency, "RUB") from portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}" group by nominal_currency'
+                sql_str=f'select sum(bp.qty*(pct_value + nominal_value)) as val, ifnull(bs.pct_currency, "RUB") from portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}" group by pct_currency'
                 
             if calc_type==2:
                 sql_str=f'select sum(pct_value*bp.qty) from portfolio bp join bonds_schedule bs on bp.isin=bs.isin where bp.qty>0 and date>="{start_date_str}" and date<="{end_date_str}" and date>="{today_str}"'
@@ -1019,6 +1021,7 @@ class Portfolio_UI(Bonds_portfolio):
             results = cursor.fetchall()
             
             for row in results:
+                f1.write(f'{row[0]}, {row[1]}')
                 if row[0] is not None:
                     cfy=row[1]
                     if cfy=='RUB':
@@ -1028,9 +1031,9 @@ class Portfolio_UI(Bonds_portfolio):
                             cf_all[start_date]+= row[0]
                     else:
                         if start_date not in cf_all:
-                            cf_all[start_date]= row[0]*bonds_functions_db.cross_rates['USD']
+                            cf_all[start_date]= row[0]*bonds_functions_db.cross_rates.get(cfy)
                         else:
-                            cf_all[start_date]+= row[0]*bonds_functions_db.cross_rates['USD']
+                            cf_all[start_date]+= row[0]*bonds_functions_db.cross_rates.get(cfy)
             
             start_date=fist_day_next_month
             fist_day_next_month=(start_date + datetime.timedelta(days=33)).replace(day=1)
@@ -1045,8 +1048,8 @@ class Portfolio_UI(Bonds_portfolio):
         fig1.add_trace(go.Bar(x=r['date'], y=r['amount'], text=round(r['amount']), texttemplate="%{y:,.0f}"))
         fig1.layout = dict(xaxis=dict(type="category"))  
         fig1.show()         
-            
         
+        f1.close()
         return 0
     
     
@@ -1197,8 +1200,8 @@ class Portfolio_UI(Bonds_portfolio):
             worksheet.write(row, col,     item[0])
             worksheet.write(row, col + 1, item[1])
             worksheet.write(row, col + 2, item[2])
-            if item[4]=="USD":
-                worksheet.write(row, col + 3, item[3]*bonds_functions_db.cross_rates["USD"])
+            if item[4] in ["USD", "CNY"]:
+                worksheet.write(row, col + 3, item[3]*bonds_functions_db.cross_rates.get(item[4]))
             else:
                 worksheet.write(row, col + 3, item[3])            
             worksheet.write(row, col + 4, item[4])
