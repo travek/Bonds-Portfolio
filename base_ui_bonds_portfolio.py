@@ -458,7 +458,7 @@ class Add_Instrument ( wx.Frame ):
 
         gSizer2.Add( self.m_staticText37, 0, wx.ALL|wx.EXPAND, 5 )
 
-        m_choice12Choices = [ u"RUB", u"USD" ]
+        m_choice12Choices = [ u"RUB", u"USD", u"CNY" ]
         self.m_choice12 = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choice12Choices, 0 )
         self.m_choice12.SetSelection( 0 )
         gSizer2.Add( self.m_choice12, 0, wx.ALL|wx.EXPAND, 5 )
