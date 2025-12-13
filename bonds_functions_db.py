@@ -12,6 +12,9 @@ import re
 import sqlite3
 import logging
 import time
+import cbr_rates
+from sqlalchemy import create_engine, MetaData, Table, select, func, desc
+
 
 
 portfolio_ext = SortedDict()
@@ -284,6 +287,49 @@ def get_instrument_type(cursor, isin):
     return val[0]    
 
 
+def update_fx_rates():
+    engine = create_engine('sqlite:///portfolio_database.db')
+    metadata = MetaData()
+    
+    # Загружаем таблицу (предполагаем, что она называется 'exchange_rates')
+    market_data = Table('market_data', metadata, autoload_with=engine)
+    
+    with engine.connect() as conn:
+        # 1. Находим максимальную дату для каждой валюты
+        subquery = select(
+            market_data.c.ID,
+            func.max(market_data.c.date).label('max_date')
+        ).group_by(
+            market_data.c.ID
+        ).subquery()
+        
+        # 2. Получаем курс на максимальную дату
+        query = select(
+            market_data.c.ID,
+            market_data.c.date,
+            market_data.c.price
+        ).select_from(
+            market_data.join(
+                subquery,
+                (market_data.c.ID == subquery.c.ID) & 
+                (market_data.c.date == subquery.c.max_date)
+            )
+            ).where(
+                market_data.c.ID_type == 'fx pair'
+        ).order_by(
+            market_data.c.ID
+        )
+        
+        result = conn.execute(query)
+        
+        print("Последние курсы валют:")
+        print("-" * 40)
+        for row in result:
+            print(f"{row.ID}: {row.price} (дата: {row.date})") 
+            cross_rates[row.ID]=row.price
+
+            
+    
 def get_bond_info_moex(isin):
     secid=""
     shortname=""
@@ -507,6 +553,9 @@ def calc_portfolio_value(cursor):
     total_val=0
     d = datetime.datetime.today()
     today_str=d.strftime("%Y%m%d")
+    
+    cbr_rates.write2DB_fxrates_on_date()
+    update_fx_rates()
     
     sql_str=f'SELECT isin, qty, portfolio_id FROM portfolio bp WHERE qty>0 '    
     cursor.execute(sql_str)
@@ -901,7 +950,7 @@ def post_market_data(cursor, isin, post_type, post_date, value):
     if post_type=="etf_price":
         price_nominal="RUB"        
         
-    if cursor.rowcount==-1:
+    if fetch_cnt is None:
         sql_str=f'insert into market_data(id, id_type, date, price, price_nominal) values ("{isin}", "{post_type}", "{post_date}", {value}, "{price_nominal}")'
         cursor.execute(sql_str)        
     else:
