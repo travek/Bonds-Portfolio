@@ -1,6 +1,7 @@
 import shutil
 import datetime
 import requests
+from requests.exceptions import ConnectionError, RequestException
 import pandas as pd
 import plotly.subplots as ps
 import plotly.graph_objs as go
@@ -10,12 +11,46 @@ import xlsxwriter
 import re
 import sqlite3
 import logging
+import time
 
 
 portfolio_ext = SortedDict()
 
 ratings={'Gov':27, 'AAA':26, 'AAA-':25, 'AA+':24, 'AA':23, 'AA-':22, 'A+':21, 'A':20, 'A-':19, 'BBB+':18, 'BBB':17, 'BBB-':16, 'BB+':15, 'BB':14, 'BB-':13, 'B+':12, 'B':11, 'B-':10 ,'CCC+':9, 'CCC':8, 'CCC-':7, 'CC+':6, 'CC':5, 'CC-':4, 'C+':3, 'C':2, 'C-':1, 'DDD':0}
-cross_rates={'USD':82, 'CNY':11.4}
+cross_rates={'USD':78.2, 'CNY':11.1}
+
+
+def make_request_with_retry(url, max_retries=10, delay=0.5):
+    """
+    Выполнить запрос с повторными попытками при ошибках соединения
+    """
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=10)  # Добавляем таймаут
+            response.raise_for_status()  # Проверяем HTTP ошибки
+            return response.json()
+            
+        except ConnectionError as e:
+            if attempt == max_retries - 1:
+                raise Exception(f"Все {max_retries} попыток завершились ошибкой. Последняя ошибка: {e}")
+            
+            print(f"Попытка {attempt + 1}/{max_retries} не удалась: {e}. Повтор через {delay} сек...")
+            time.sleep(delay)
+            
+        except RequestException as e:
+            # Другие ошибки requests (не только соединение)
+            if attempt == max_retries - 1:
+                raise Exception(f"Все {max_retries} попыток завершились ошибкой. Последняя ошибка: {e}")
+            
+            print(f"Попытка {attempt + 1}/{max_retries}: {e}. Повтор через {delay} сек...")
+            time.sleep(delay)
+            
+        except Exception as e:
+            # Другие неожиданные ошибки
+            raise Exception(f"Непредвиденная ошибка: {e}")
+    
+    raise Exception(f"Не удалось выполнить запрос после {max_retries} попыток")
+    
 
 def get_bond_maturity(cursor, isin):
     d = datetime.datetime(1900, 1, 1, 0, 1)
@@ -254,7 +289,13 @@ def get_bond_info_moex(isin):
     shortname=""
     inn=""
     req_str='https://iss.moex.com/iss/securities.json?q='+isin+"'"
-    j=requests.get(req_str).json() #Получить инструмент по isin коду  #'https://iss.moex.com/iss/securities.json?q=RU000A105XV1'
+    
+    try:
+        j = make_request_with_retry(req_str, max_retries=10, delay=0.5)
+    except Exception as e:
+        print(f"Ошибка при выполнении запроса: {e}")
+        
+    #j=requests.get(req_str).json() #Получить инструмент по isin коду  #'https://iss.moex.com/iss/securities.json?q=RU000A105XV1'
     if len(j['securities']['data'])<1:
         print('Security ID for ',isin,' isnt found on MOEX API!')
         return {}
@@ -275,7 +316,13 @@ def get_bond_info_moex(isin):
     fixed_coupon=0
     settle_date=0
     putopt_date=0
-    j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
+    
+    try:
+        j = make_request_with_retry(req_str, max_retries=10, delay=0.5)
+    except Exception as e:
+        print(f"Ошибка при выполнении запроса: {e}")
+            
+    #j=requests.get(req_str).json()  #'https://iss.moex.com/iss/engines/stock/markets/bonds/securities/RU000A106Z38.json?marketprice_board=1'
     for f, b in zip(j['securities']['columns'], j['securities']['data'][0]):
         if f=="ACCRUEDINT":
             nkd=b
